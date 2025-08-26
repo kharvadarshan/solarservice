@@ -21,7 +21,9 @@ export default function Login() {
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify(form)
-      })
+      });
+
+      
       const data = await res.json()
       if (!res.ok) throw new Error(data?.error || 'Login failed')
       localStorage.setItem('auth_token', data.token)

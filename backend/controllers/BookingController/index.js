@@ -38,7 +38,7 @@ exports.list = async (req, res) => {
 
 exports.my = async (req, res) => {
 	try {
-		const bookings = await Booking.find({ userId: req.user.id }).sort({ createdAt: -1 });
+		const bookings = await Booking.find({ userId: req.user.userId }).sort({ createdAt: -1 });
 		return res.json({ success: true, bookings });
 	} catch (error) {
 		console.error('My bookings error:', error);

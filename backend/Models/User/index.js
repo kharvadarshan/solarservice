@@ -17,11 +17,23 @@ const userSchema = new mongoose.Schema({
 		type: String,
 		required: true
 	},
-	role: {
-		type: String,
-		enum: ['user', 'admin'],
-		default: 'user'
-	}
+	  userType: {
+    type: String,
+    enum: ['user', 'mentor', 'admin'],
+    default: 'user'
+  },isActive: {
+    type: Boolean,
+    default: true
+  },
+  lastSeen: {
+    type: Date,
+    default: Date.now
+  },
+  createdAt: {
+    type: Date,
+    default: Date.now
+  }
+
 }, { timestamps: true });
 
 const User = mongoose.model('User', userSchema);

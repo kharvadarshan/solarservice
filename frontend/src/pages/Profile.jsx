@@ -82,7 +82,11 @@ export default function Profile() {
   useEffect(() => {
     const fetchMe = async () => {
       try {
-        const res = await fetch('http://localhost:5000/api/auth/me', { credentials: 'include' })
+         const token = localStorage.getItem('auth_token');
+        const res = await fetch('http://localhost:5000/api/auth/me', { credentials: 'include',headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        } })
         const data = await res.json()
         if (!res.ok) throw new Error(data?.error || 'Failed to load profile')
         setUser(data.user)
@@ -96,7 +100,11 @@ export default function Profile() {
   useEffect(() => {
     const loadBookings = async () => {
       try {
-        const res = await fetch('http://localhost:5000/api/bookings/my', { credentials: 'include' })
+         const token = localStorage.getItem('auth_token');
+        const res = await fetch('http://localhost:5000/api/bookings/my', { credentials: 'include',headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        } })
         const data = await res.json()
         if (!res.ok) throw new Error(data?.error || 'Failed to load bookings')
         setBookings(data.bookings)

@@ -3,7 +3,7 @@ const jwt = require('jsonwebtoken');
 const User = require('../../Models/User');
 
 function signToken(user) {
-	return jwt.sign({ id: user._id, email: user.email, name: user.name, role: user.role }, process.env.JWT_SECRET, {
+	return jwt.sign({ userId: user._id, email: user.email, name: user.name, userType:user.userType }, process.env.JWT_SECRET, {
 		expiresIn: '7d'
 	});
 }
@@ -24,11 +24,12 @@ exports.signup = async (req, res) => {
 		if (!name || !email || !password) return res.status(400).json({ error: 'Missing required fields' });
 		const existing = await User.findOne({ email });
 		if (existing) return res.status(409).json({ error: 'Email already registered' });
-		const passwordHash = await bcrypt.hash(password, 10);
-		const user = await User.create({ name, email, passwordHash });
+		const salt = await bcrypt.genSalt(10);
+		const passwordHash = await bcrypt.hash(password, salt);
+		const user = await User.create({ name, email, password:passwordHash });
 		const token = signToken(user);
 		setAuthCookie(res, token);
-		return res.status(201).json({ success: true, token, user: { id: user._id, name: user.name, email: user.email, role: user.role } });
+		return res.status(201).json({ success: true, token, user: { id: user._id, name: user.name, email: user.email, userType: user.userType } });
 	} catch (error) {
 		console.error('Signup error:', error);
 		return res.status(500).json({ error: 'Internal server error' });
@@ -37,15 +38,20 @@ exports.signup = async (req, res) => {
 
 exports.login = async (req, res) => {
 	try {
+
+		console.log(req.body);
 		const { email, password } = req.body;
-		if (!email || !password) return res.status(400).json({ error: 'Missing required fields' });
+		//if (!email || !password) return res.status(400).json({ error: 'Missing required fields' });
 		const user = await User.findOne({ email });
 		if (!user) return res.status(401).json({ error: 'Invalid credentials' });
 		const ok = await bcrypt.compare(password, user.passwordHash);
 		if (!ok) return res.status(401).json({ error: 'Invalid credentials' });
+
+		user.lastSeen = new Date();
+		await user.save();
 		const token = signToken(user);
 		setAuthCookie(res, token);
-		return res.json({ success: true, token, user: { id: user._id, name: user.name, email: user.email, role: user.role } });
+		return res.json({ success: true, token, user: { id: user._id, name: user.name, email: user.email, userType: user.userType } });
 	} catch (error) {
 		console.error('Login error:', error);
 		return res.status(500).json({ error: 'Internal server error' });
@@ -54,7 +60,8 @@ exports.login = async (req, res) => {
 
 exports.me = async (req, res) => {
 	try {
-		const user = await User.findById(req.user.id).select('_id name email role');
+		console.log(req.user);
+		const user = await User.findById(req.user.userId).select('_id name email role');
 		if (!user) return res.status(404).json({ error: 'User not found' });
 		return res.json({ success: true, user: { id: user._id, name: user.name, email: user.email, role: user.role } });
 	} catch (error) {
@@ -67,3 +74,14 @@ exports.logout = async (req, res) => {
 	res.clearCookie('token', { httpOnly: true, sameSite: 'lax' });
 	return res.json({ success: true });
 };
+
+exports.profile =async (req, res) => {
+  try {
+   
+
+    res.json({user:req.user});
+  } catch (error) {
+    console.error(error);
+    res.status(401).json({ message: 'Invalid token' });
+  }
+}
