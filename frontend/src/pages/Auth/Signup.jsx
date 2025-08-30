@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-
+import api from '../../api'
 export default function Signup() {
   const navigate = useNavigate()
   const [form, setForm] = useState({ name: '', email: '', password: '', confirmPassword: '' })
@@ -19,10 +19,8 @@ export default function Signup() {
     if (!passwordsMatch) return
     setSubmitting(true)
     try {
-      const res = await fetch('http://localhost:5000/api/auth/signup', {
+      const res = await api.post('/api/auth/signup', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
         body: JSON.stringify({ name: form.name, email: form.email, password: form.password })
       })
       const data = await res.json()

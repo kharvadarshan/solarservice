@@ -39,7 +39,7 @@ exports.list = async (req, res) => {
 exports.my = async (req, res) => {
 	try {
 		const bookings = await Booking.find({ userId: req.user.userId }).sort({ createdAt: -1 });
-		return res.json({ success: true, bookings });
+		return res.json({ success: true, bookings:bookings });
 	} catch (error) {
 		console.error('My bookings error:', error);
 		return res.status(500).json({ error: 'Internal server error' });

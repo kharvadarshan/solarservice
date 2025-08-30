@@ -26,7 +26,7 @@ exports.signup = async (req, res) => {
 		if (existing) return res.status(409).json({ error: 'Email already registered' });
 		const salt = await bcrypt.genSalt(10);
 		const passwordHash = await bcrypt.hash(password, salt);
-		const user = await User.create({ name, email, password:passwordHash });
+		const user = await User.create({ name, email, passwordHash:passwordHash });
 		const token = signToken(user);
 		setAuthCookie(res, token);
 		return res.status(201).json({ success: true, token, user: { id: user._id, name: user.name, email: user.email, userType: user.userType } });
@@ -41,8 +41,9 @@ exports.login = async (req, res) => {
 
 		console.log(req.body);
 		const { email, password } = req.body;
-		//if (!email || !password) return res.status(400).json({ error: 'Missing required fields' });
+		if (!email || !password) return res.status(400).json({ error: 'Missing required fields' });
 		const user = await User.findOne({ email });
+		console.log(user);
 		if (!user) return res.status(401).json({ error: 'Invalid credentials' });
 		const ok = await bcrypt.compare(password, user.passwordHash);
 		if (!ok) return res.status(401).json({ error: 'Invalid credentials' });
@@ -70,9 +71,10 @@ exports.me = async (req, res) => {
 	}
 };
 
+
 exports.logout = async (req, res) => {
 	res.clearCookie('token', { httpOnly: true, sameSite: 'lax' });
-	return res.json({ success: true });
+	return res.json({ success: true,ok:true });
 };
 
 exports.profile =async (req, res) => {

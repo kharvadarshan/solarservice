@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import CountUp from '../../components/CountUp';
-
+import api from '../../api';
 export default function AdminPanel() {
   const navigate = useNavigate();
   const [stats, setStats] = useState(null);
@@ -13,7 +13,7 @@ export default function AdminPanel() {
   useEffect(() => {
     const checkAuth = async () => {
       try {
-        const res = await fetch('http://localhost:5000/api/auth/me', { credentials: 'include' });
+        const res = await api.get('/api/auth/me');
         const data = await res.json();
         if (!res.ok) throw new Error(data?.error || 'Not authenticated');
         if (data.user.role !== 'admin') {

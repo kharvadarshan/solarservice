@@ -1,11 +1,15 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { loginSuccess,setToken } from '../../slice/AuthSlice'
+import { useDispatch } from "react-redux"
 
 export default function Login() {
+  const dispatch = useDispatch()
   const navigate = useNavigate()
   const [form, setForm] = useState({ email: '', password: '' })
   const [showPassword, setShowPassword] = useState(false)
   const [submitting, setSubmitting] = useState(false)
+
 
   const handleChange = (e) => {
     const { name, value } = e.target
@@ -19,24 +23,27 @@ export default function Login() {
       const res = await fetch('http://localhost:5000/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
         body: JSON.stringify(form)
       });
 
-      
-      const data = await res.json()
-      if (!res.ok) throw new Error(data?.error || 'Login failed')
-      localStorage.setItem('auth_token', data.token)
-      localStorage.setItem('auth_user', JSON.stringify(data.user))
-      
-      // Redirect based on user role
-      if (data.user.role === 'admin') {
-        navigate('/admin')
-      } else {
-        navigate('/')
-      }
+       const data = await res.json()
+     
+        if(data.success){       
+
+                //localStorage.setItem('auth_token', data.token)
+                //localStorage.setItem('auth_user', JSON.stringify(data.user))
+                 dispatch(loginSuccess(data.user));
+                 dispatch(setToken(data.token));
+                 // Redirect based on user role
+              if (data?.user?.userType === 'admin') {
+                navigate('/admin')
+              } else {
+                navigate('/dashboard')
+              }
+
+        }
     } catch (err) {
-      alert(err.message)
+      console.log(err.message)
     } finally {
       setSubmitting(false)
     }

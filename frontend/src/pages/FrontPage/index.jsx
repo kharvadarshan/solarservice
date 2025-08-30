@@ -1,11 +1,16 @@
-import React,{ useState, useEffect } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
-import SolarCalculator from '../../components/SolarCalculator';
-import CountUp from '../../components/CountUp';
-import ChatButton from '../../components/ChatButton';
-import ChatWithMentor from '../../components/ChatWithMentor';
+import React,{ useState} from 'react'
+import { useEffect } from 'react'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
+import SolarCalculator from '../../components/SolarCalculator'
+import CountUp from '../../components/CountUp'
+import ChatButton from '../../components/ChatButton'
+import ChatWithMentor from '../../components/ChatWithMentor'
+import { useDispatch, useSelector } from 'react-redux'
+import  { logout,removeToken } from '../../slice/AuthSlice'
+
 
 const SolarServiceHomepage = ({user}) => {
+  const dispatch=useDispatch()
   const [showChat, setShowChat] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [currentSlide, setCurrentSlide] = useState(0);
@@ -16,18 +21,11 @@ const SolarServiceHomepage = ({user}) => {
     phone: '',
     message: ''
   });
-  const [authUser, setAuthUser] = useState(null);
+  const authUser = useSelector(state=>state.auth.user);
   const location = useLocation();
   const navigate = useNavigate();
    
-  useEffect(() => {
-    try {
-      const stored = localStorage.getItem('auth_user');
-      setAuthUser(stored ? JSON.parse(stored) : null);
-    } catch (error) {
-      console.error('Error parsing auth user:', error);
-    }
-  }, []);
+
 
   if (!user) {
     return null;
@@ -35,13 +33,20 @@ const SolarServiceHomepage = ({user}) => {
 
   const handleLogout = async () => {
     try {
-      await fetch('http://localhost:5000/api/auth/logout', { method: 'POST', credentials: 'include' });
+     const res =  await fetch('http://localhost:5000/api/auth/logout', { method: 'POST', credentials: 'include' });
+
+      if(res.ok){
+            //localStorage.removeItem('auth_token');
+           //localStorage.removeItem('auth_user');
+            dispatch(logout());
+            dispatch(removeToken());
+            navigate('/')
+      }
+    
     } catch (error) {
       console.error('Logout error:', error);
     }
-    localStorage.removeItem('auth_token');
-    localStorage.removeItem('auth_user');
-    setAuthUser(null);
+
   };
 
   const testimonials = [

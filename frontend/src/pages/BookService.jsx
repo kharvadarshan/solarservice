@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
-
+import api from '../api'
 export default function BookService() {
   const navigate = useNavigate()
   const [submitting, setSubmitting] = useState(false)
@@ -23,13 +23,8 @@ export default function BookService() {
     e.preventDefault()
     setSubmitting(true)
     try {
-      const token = localStorage.getItem('auth_token')
-      const res = await fetch('http://localhost:5000/api/bookings', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {})
-        },
+      
+      const res = await api.post('/api/bookings', {
         body: JSON.stringify(form)
       })
       if (!res.ok) throw new Error('Failed to submit booking')

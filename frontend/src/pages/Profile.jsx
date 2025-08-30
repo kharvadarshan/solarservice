@@ -1,5 +1,8 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
+import api from '../api'
+import { useDispatch, useSelector } from 'react-redux'
+import { logout,removeToken } from '../slice/AuthSlice'
 
 function BookingProgress({ steps = [] }) {
   if (!Array.isArray(steps) || steps.length === 0) return null
@@ -73,41 +76,22 @@ function StatusBadge({ status }) {
 
 export default function Profile() {
   const navigate = useNavigate()
-  const [user, setUser] = useState(null)
-  const [error, setError] = useState('')
+  const dispatch=useDispatch();
+  const user = useSelector(state=>state.auth.user)
   const [loggingOut, setLoggingOut] = useState(false)
   const [bookings, setBookings] = useState([])
   const [bookingsError, setBookingsError] = useState('')
 
-  useEffect(() => {
-    const fetchMe = async () => {
-      try {
-         const token = localStorage.getItem('auth_token');
-        const res = await fetch('http://localhost:5000/api/auth/me', { credentials: 'include',headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        } })
-        const data = await res.json()
-        if (!res.ok) throw new Error(data?.error || 'Failed to load profile')
-        setUser(data.user)
-      } catch (e) {
-        setError(e.message)
-      }
-    }
-    fetchMe()
-  }, [])
+ 
 
   useEffect(() => {
     const loadBookings = async () => {
       try {
-         const token = localStorage.getItem('auth_token');
-        const res = await fetch('http://localhost:5000/api/bookings/my', { credentials: 'include',headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        } })
-        const data = await res.json()
-        if (!res.ok) throw new Error(data?.error || 'Failed to load bookings')
-        setBookings(data.bookings)
+        const res = await api.get('/api/bookings/my')
+       
+        
+        if (!res.data.success) throw new Error(res.data?.error || 'Failed to load bookings')
+        setBookings(res.data.bookings)
       } catch (e) {
         setBookingsError(e.message)
       }
@@ -125,22 +109,27 @@ export default function Profile() {
   }
 
   const handleLogout = async () => {
-    setLoggingOut(true)
+   
     try {
-      await fetch('http://localhost:5000/api/auth/logout', { method: 'POST', credentials: 'include' })
-    } catch {}
-    localStorage.removeItem('auth_token')
-    localStorage.removeItem('auth_user')
-    navigate('/')
+      const res=await api.post('/api/auth/logout')
+       if(res.data.ok){
+                 
+                  dispatch(logout());
+                  dispatch(removeToken());
+                  navigate('/')
+            }
+    } catch(error) {
+      console.log(error);
+    }
   }
 
-  if (error) return (
-    <div className="pt-16 p-6">
-      <div className="max-w-xl mx-auto bg-red-50 text-red-700 border border-red-200 rounded-lg p-4">
-        {error}
-      </div>
-    </div>
-  )
+  // if (error) return (
+  //   <div className="pt-16 p-6">
+  //     <div className="max-w-xl mx-auto bg-red-50 text-red-700 border border-red-200 rounded-lg p-4">
+  //       {error}
+  //     </div>
+  //   </div>
+  // )
 
   if (!user) return <div className="pt-16 p-6">Loading...</div>
 
@@ -159,7 +148,7 @@ export default function Profile() {
               </div>
             </div>
             <div className="flex items-center gap-3">
-              <Link to="/" className="px-5 py-2 rounded-full border border-gray-300 text-gray-700 hover:border-orange-500 hover:text-orange-600 transition-colors">Back to Home</Link>
+              <Link to="/dashboard" className="px-5 py-2 rounded-full border border-gray-300 text-gray-700 hover:border-orange-500 hover:text-orange-600 transition-colors">Back to Home</Link>
               <button onClick={handleLogout} disabled={loggingOut} className="px-5 py-2 rounded-full bg-gray-900 text-white hover:bg-gray-800 transition-colors disabled:opacity-60">
                 {loggingOut ? 'Logging out...' : 'Logout'}
               </button>
