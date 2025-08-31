@@ -7,6 +7,8 @@ import BookService from './pages/BookService'
 import Profile from './pages/Profile'
 import AdminPanel from './pages/AdminChat'
 import ChatButton from './components/ChatButton'
+import ProductsPage from "./pages/ProductsPage";
+import SolarEstimate from "./pages/SolarEstimate";
 import { useSelector } from 'react-redux'
 
 import './App.css'
@@ -56,7 +58,16 @@ function App() {
               path="/chat"
               element={user ? <ChatButton user={user} /> : <Navigate to="/" />}
             />
+            <Route
+               path="/products"
+               element={<ProductsPage />} />
+
+            <Route
+             path="/solar-estimate"
+              element={<SolarEstimate />} />
+            
           </Routes>
+          
     </>
   )
 }
