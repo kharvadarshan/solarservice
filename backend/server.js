@@ -7,6 +7,7 @@ const bookingRoutes = require('./routes/BookingRoutes');
 const authRoutes = require('./routes/AuthRoutes');
 const adminRoutes = require('./routes/AdminRoutes');
 const chatRoutes = require('./routes/ChatRoutes');
+const productRoutes = require("./routes/ProductRoutes");
 const cookieParser = require('cookie-parser');
 const http=require('http');
 const socketIo = require('socket.io');
@@ -362,6 +363,7 @@ app.use('/api/bookings', bookingRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/chat', chatRoutes);
+app.use("/api/products", productRoutes);
 
 
 
