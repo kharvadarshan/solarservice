@@ -49,7 +49,7 @@ function App() {
             />
 
             <Route
-              path="/admin"
+              path="/admin/*"
               element={ user?.userType==='admin' && <DashboardPage /> }
             />
             <Route
