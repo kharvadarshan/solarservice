@@ -34,7 +34,7 @@ const MentorDashboard = () => {
       newSocket.emit('join_chat', {
         userName: user.name,
         userId: user.id,
-        userType: 'admin'
+        userType: 'mentor'
       });
     });
 

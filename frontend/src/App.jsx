@@ -25,9 +25,11 @@ function App() {
     <>
         <Routes>
             <Route
-              path="/dashboard"
+              path="/dashboard/*"
               element={ <FrontPage user={user} /> }
             />
+
+            <Route path="/dashboard/book" element={<BookService/>} />
             <Route
              path="/"
              element={<Login /> }
@@ -56,6 +58,7 @@ function App() {
               path="/chat"
               element={user ? <ChatButton user={user} /> : <Navigate to="/" />}
             />
+            
           </Routes>
     </>
   )

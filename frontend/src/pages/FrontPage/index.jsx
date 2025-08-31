@@ -1,5 +1,4 @@
-import React,{ useState} from 'react'
-import { useEffect } from 'react'
+import React,{ useState,useEffect} from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import SolarCalculator from '../../components/SolarCalculator'
 import CountUp from '../../components/CountUp'
@@ -120,16 +119,22 @@ const SolarServiceHomepage = ({user}) => {
     return () => observer.disconnect();
   }, []);
 
-  const scrollToHash = (hash) => {
-    const id = (hash || '').replace('#', '');
-    if (!id) return;
-    const el = document.getElementById(id);
-    if (el) {
-      const OFFSET = 80;
-      const y = el.getBoundingClientRect().top + window.pageYOffset - OFFSET;
-      window.scrollTo({ top: y, behavior: 'smooth' });
-    }
-  };
+  useEffect(() => {
+  if (location.hash && location.pathname.startsWith('/dashboard')) {
+    setTimeout(() => scrollToHash(location.hash), 100);
+  }
+}, [location.hash, location.pathname]);
+
+const scrollToHash = (hash) => {
+  const id = (hash || '').replace('#', '');
+  if (!id) return;
+  const el = document.getElementById(id);
+  if (el) {
+    const OFFSET = 80;
+    const y = el.getBoundingClientRect().top + window.pageYOffset - OFFSET;
+    window.scrollTo({ top: y, behavior: 'smooth' });
+  }
+};
 
   useEffect(() => {
     if (location.hash) {
@@ -138,17 +143,22 @@ const SolarServiceHomepage = ({user}) => {
   }, [location.hash]);
 
   const handleNavClick = (hash) => (e) => {
-    e.preventDefault();
-    if (location.pathname !== '/') {
-      navigate('/' + hash);
-    } else {
-      if (window.location.hash !== hash) {
-        window.history.replaceState(null, '', hash);
-      }
-      scrollToHash(hash);
+  e.preventDefault();
+  const targetHash = hash.replace('#', '');
+  
+  // If we're not on the dashboard, navigate to dashboard with hash
+  if (!location.pathname.startsWith('/dashboard')) {
+    navigate(`/dashboard#${targetHash}`);
+  } else {
+    // If we're already on dashboard, just scroll to the section
+    if (window.location.hash !== `#${targetHash}`) {
+      window.history.replaceState(null, '', `#${targetHash}`);
     }
-    setIsMenuOpen(false);
-  };
+    scrollToHash(`#${targetHash}`);
+  }
+  setIsMenuOpen(false);
+};
+
 
   const handleInputChange = (e) => {
     setFormData({
@@ -181,14 +191,24 @@ const SolarServiceHomepage = ({user}) => {
             </div>
 
             {/* Center nav */}
-            <div className="hidden md:flex flex-1 justify-center space-x-8">
-              <Link to="/home" onClick={handleNavClick('home')} className="text-gray-700 hover:text-orange-500 transition-colors duration-300 font-medium">Home</Link>
-              <Link to="/services" onClick={handleNavClick('services')} className="text-gray-700 hover:text-orange-500 transition-colors duration-300 font-medium">Services</Link>
-              <Link to="/about" onClick={handleNavClick('about')} className="text-gray-700 hover:text-orange-500 transition-colors duration-300 font-medium">About</Link>
-              <Link to="/calculator" onClick={handleNavClick('calculator')} className="text-gray-700 hover:text-orange-500 transition-colors duration-300 font-medium">Calculator</Link>
-              <Link to="/book" className="text-gray-700 hover:text-orange-500 transition-colors duration-300 font-medium">Book</Link>
-              <Link to="/contact" onClick={handleNavClick('contact')} className="text-gray-700 hover:text-orange-500 transition-colors duration-300 font-medium">Contact</Link>
-            </div>
+            {/* <div className="hidden md:flex flex-1 justify-center space-x-8">
+              <Link to="/dashboard/home" onClick={handleNavClick('home')} className="text-gray-700 hover:text-orange-500 transition-colors duration-300 font-medium">Home</Link>
+              <Link to="/dashboard/services" onClick={handleNavClick('services')} className="text-gray-700 hover:text-orange-500 transition-colors duration-300 font-medium">Services</Link>
+              <Link to="/dashboard/about" onClick={handleNavClick('about')} className="text-gray-700 hover:text-orange-500 transition-colors duration-300 font-medium">About</Link>
+              <Link to="/dashboard/calculator" onClick={handleNavClick('calculator')} className="text-gray-700 hover:text-orange-500 transition-colors duration-300 font-medium">Calculator</Link>
+              <Link to="/dashboard/book" className="text-gray-700 hover:text-orange-500 transition-colors duration-300 font-medium">Book</Link>
+              <Link to="/dashboard/contact" onClick={handleNavClick('contact')} className="text-gray-700 hover:text-orange-500 transition-colors duration-300 font-medium">Contact</Link>
+            </div> */}
+
+            {/* Center nav */}
+                 <div className="hidden md:flex flex-1 justify-center space-x-8">
+                         <Link to="/dashboard" onClick={handleNavClick('home')} className="text-gray-700 hover:text-orange-500 transition-colors duration-300 font-medium">Home</Link>
+                         <Link to="/dashboard#services" onClick={handleNavClick('services')} className="text-gray-700 hover:text-orange-500 transition-colors duration-300 font-medium">Services</Link>
+                         <Link to="/dashboard#about" onClick={handleNavClick('about')} className="text-gray-700 hover:text-orange-500 transition-colors duration-300 font-medium">About</Link>
+                         <Link to="/dashboard#calculator" onClick={handleNavClick('calculator')} className="text-gray-700 hover:text-orange-500 transition-colors duration-300 font-medium">Calculator</Link>
+                         <Link to="/dashboard/book" className="text-gray-700 hover:text-orange-500 transition-colors duration-300 font-medium">Book</Link>
+                         <Link to="/dashboard#contact" onClick={handleNavClick('contact')} className="text-gray-700 hover:text-orange-500 transition-colors duration-300 font-medium">Contact</Link>
+                  </div>
 
             {/* Auth actions */}
             <div className="hidden md:flex items-center gap-3 ml-auto">
@@ -227,12 +247,12 @@ const SolarServiceHomepage = ({user}) => {
           {/* Mobile Menu */}
           <div className={`md:hidden transition-all duration-300 overflow-hidden ${isMenuOpen ? 'max-h-96 pb-4' : 'max-h-0'}`}>
             <div className="flex flex-col space-y-3 pt-4 border-t border-gray-200">
-              <Link to="/#home" onClick={handleNavClick('#home')} className="text-gray-700 hover:text-orange-500 transition-colors duration-300 font-medium">Home</Link>
-              <Link to="/#services" onClick={handleNavClick('#services')} className="text-gray-700 hover:text-orange-500 transition-colors duration-300 font-medium">Services</Link>
-              <Link to="/#about" onClick={handleNavClick('#about')} className="text-gray-700 hover:text-orange-500 transition-colors duration-300 font-medium">About</Link>
-              <Link to="/#calculator" onClick={handleNavClick('#calculator')} className="text-gray-700 hover:text-orange-500 transition-colors duration-300 font-medium">Calculator</Link>
-              <Link to="/book" className="text-gray-700 hover:text-orange-500 transition-colors duration-300 font-medium">Book</Link>
-              <Link to="/#contact" onClick={handleNavClick('#contact')} className="text-gray-700 hover:text-orange-500 transition-colors duration-300 font-medium">Contact</Link>
+                 <Link to="/dashboard" onClick={handleNavClick('#home')} className="text-gray-700 hover:text-orange-500 transition-colors duration-300 font-medium">Home</Link>
+    <Link to="/dashboard#services" onClick={handleNavClick('#services')} className="text-gray-700 hover:text-orange-500 transition-colors duration-300 font-medium">Services</Link>
+    <Link to="/dashboard#about" onClick={handleNavClick('#about')} className="text-gray-700 hover:text-orange-500 transition-colors duration-300 font-medium">About</Link>
+    <Link to="/dashboard#calculator" onClick={handleNavClick('#calculator')} className="text-gray-700 hover:text-orange-500 transition-colors duration-300 font-medium">Calculator</Link>
+    <Link to="/dashboard/book" className="text-gray-700 hover:text-orange-500 transition-colors duration-300 font-medium">Book</Link>
+    <Link to="/dashboard#contact" onClick={handleNavClick('#contact')} className="text-gray-700 hover:text-orange-500 transition-colors duration-300 font-medium">Contact</Link>
               <div className="border-t border-gray-200 pt-3 mt-1" />
               {authUser ? (
                 <>

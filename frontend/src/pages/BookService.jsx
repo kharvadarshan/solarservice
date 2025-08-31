@@ -30,7 +30,7 @@ export default function BookService() {
       if (!res.ok) throw new Error('Failed to submit booking')
       await res.json()
       alert('Booking submitted! We will contact you shortly.')
-      navigate('/')
+      navigate('/dashboard')
     } catch (error) {
       console.error('Booking submission error:', error);
       alert('Something went wrong. Please try again.')
@@ -44,7 +44,7 @@ export default function BookService() {
       <div className="w-full px-4 sm:px-6 lg:px-8 py-10">
         <div className="max-w-3xl mx-auto bg-white shadow-lg rounded-2xl p-8">
           <div className="mb-6 flex items-center justify-between">
-            <Link to="/" className="text-gray-600 hover:text-orange-600">← Back to Home</Link>
+            <Link to="/dashboard" className="text-gray-600 hover:text-orange-600">← Back to Home</Link>
             <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Book Solar Installation</h1>
           </div>
 
