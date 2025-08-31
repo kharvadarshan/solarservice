@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import CountUp from '../../components/CountUp';
 import api from '../../api';
@@ -10,39 +10,30 @@ export default function AdminPanel() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('dashboard');
 
-  useEffect(() => {
-    const checkAuth = async () => {
-      try {
-        const res = await api.get('/api/auth/me');
-        const data = await res.json();
-        if (!res.ok) throw new Error(data?.error || 'Not authenticated');
-        if (data.user.role !== 'admin') {
-          alert('Admin access required');
-          navigate('/');
-          return;
-        }
-        loadDashboardData();
-      } catch (error) {
-        console.error('Auth check failed:', error);
-        navigate('/login');
-      }
-    };
-    checkAuth();
-  }, [navigate]);
+   useEffect(()=>{
+      loadDashboardData();
+   },[])
 
   const loadDashboardData = async () => {
     try {
       const [statsRes, usersRes, bookingsRes] = await Promise.all([
-        fetch('http://localhost:5000/api/admin/stats', { credentials: 'include' }),
-        fetch('http://localhost:5000/api/admin/users', { credentials: 'include' }),
-        fetch('http://localhost:5000/api/admin/bookings', { credentials: 'include' })
+        api.get('/api/admin/stats'),
+        api.get('/api/admin/users'),
+        api.get('/api/admin/bookings')
       ]);
 
-      const [statsData, usersData, bookingsData] = await Promise.all([
-        statsRes.json(),
-        usersRes.json(),
-        bookingsRes.json()
-      ]);
+      // const [statsData, usersData, bookingsData] = await Promise.all([
+      //   statsRes.json(),
+      //   usersRes.json(),
+      //   bookingsRes.json()
+      // ]);
+
+      const statsData = statsRes.data;
+    const usersData = usersRes.data;
+    const bookingsData = bookingsRes.data;
+
+
+     
 
       if (statsData.success) setStats(statsData.stats);
       if (usersData.success) setUsers(usersData.users);
@@ -56,27 +47,15 @@ export default function AdminPanel() {
 
   const updateBookingStatus = async (bookingId, status) => {
     try {
-      const res = await fetch(`http://localhost:5000/api/admin/bookings/${bookingId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
+      const res = await api.put(`/api/admin/bookings/${bookingId}`, {
         body: JSON.stringify({ status })
       });
-      if (res.ok) {
+      if (res.data.success) {
         loadDashboardData(); // Reload data
       }
     } catch (error) {
       console.error('Failed to update booking:', error);
     }
-  };
-
-  const handleLogout = async () => {
-    try {
-      await fetch('http://localhost:5000/api/auth/logout', { method: 'POST', credentials: 'include' });
-    } catch {}
-    localStorage.removeItem('auth_token');
-    localStorage.removeItem('auth_user');
-    navigate('/');
   };
 
   if (loading) {
@@ -99,12 +78,6 @@ export default function AdminPanel() {
               </div>
               <span className="text-xl font-bold text-gray-900">SolarTech Admin</span>
             </div>
-            <button
-              onClick={handleLogout}
-              className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
-            >
-              Logout
-            </button>
           </div>
         </div>
       </header>

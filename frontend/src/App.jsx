@@ -27,9 +27,11 @@ function App() {
     <>
         <Routes>
             <Route
-              path="/dashboard"
+              path="/dashboard/*"
               element={ <FrontPage user={user} /> }
             />
+
+            <Route path="/dashboard/book" element={<BookService/>} />
             <Route
              path="/"
              element={<Login /> }
@@ -51,13 +53,14 @@ function App() {
             />
 
             <Route
-              path="/admin"
+              path="/admin/*"
               element={ user?.userType==='admin' && <DashboardPage /> }
             />
             <Route
               path="/chat"
               element={user ? <ChatButton user={user} /> : <Navigate to="/" />}
             />
+
             <Route
                path="/products"
                element={<ProductsPage />} />
@@ -65,6 +68,7 @@ function App() {
             <Route
              path="/solar-estimate"
               element={<SolarEstimate />} />
+
             
           </Routes>
           

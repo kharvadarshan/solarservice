@@ -112,6 +112,8 @@ io.on('connection', (socket) => {
     }
   });
 
+  
+
   // Handle sending messages from users
   socket.on('send_message', async ({ message, recipientId, timestamp }) => {
     try {
