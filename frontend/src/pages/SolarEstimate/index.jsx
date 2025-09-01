@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import "./index.css";
+import { Link } from "react-router-dom";
 
 const SOLAR_PANELS = [
   { company: "Adani Solar", basePrice: 15000 },
@@ -96,6 +97,12 @@ const SolarEstimate = () => {
 
   return (
     <div className="estimate-container">
+         <Link   to="/dashboard" 
+              className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-full shadow-lg hover:shadow-xl hover:from-blue-600 hover:to-purple-700 transition-all duration-300 font-semibold group transform hover:-translate-y-0.5"
+              >
+              <span className="mr-2 group-hover:-translate-x-2 transition-transform duration-300">←</span>
+               Back to Home
+              </Link>
       <h1>⚡ Solar Installation Estimator</h1>
       <p className="subtitle">
         Select your preferred components and get an instant cost estimate.

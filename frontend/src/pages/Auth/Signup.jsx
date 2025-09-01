@@ -19,14 +19,13 @@ export default function Signup() {
     if (!passwordsMatch) return
     setSubmitting(true)
     try {
-      const res = await api.post('/api/auth/signup', {
-        method: 'POST',
-        body: JSON.stringify({ name: form.name, email: form.email, password: form.password })
-      })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data?.error || 'Signup failed')
-      localStorage.setItem('auth_token', data.token)
-      localStorage.setItem('auth_user', JSON.stringify(data.user))
+      const res = await api.post('/api/auth/signup',
+       { name: form.name, email: form.email, password: form.password }
+      )
+     
+      if (!res.data.success) throw new Error(res.data?.error || 'Signup failed')
+      localStorage.setItem('auth_token', res.data.token)
+      localStorage.setItem('auth_user', JSON.stringify(res.data.user))
       navigate('/')
     } catch (err) {
       alert(err.message)

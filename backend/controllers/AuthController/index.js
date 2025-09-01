@@ -21,6 +21,7 @@ function setAuthCookie(res, token) {
 exports.signup = async (req, res) => {
 	try {
 		const { name, email, password } = req.body;
+		console.log(name);
 		if (!name || !email || !password) return res.status(400).json({ error: 'Missing required fields' });
 		const existing = await User.findOne({ email });
 		if (existing) return res.status(409).json({ error: 'Email already registered' });

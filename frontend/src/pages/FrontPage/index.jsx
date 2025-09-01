@@ -207,6 +207,8 @@ const scrollToHash = (hash) => {
                          <Link to="/dashboard#about" onClick={handleNavClick('about')} className="text-gray-700 hover:text-orange-500 transition-colors duration-300 font-medium">About</Link>
                          <Link to="/dashboard#calculator" onClick={handleNavClick('calculator')} className="text-gray-700 hover:text-orange-500 transition-colors duration-300 font-medium">Calculator</Link>
                          <Link to="/dashboard/book" className="text-gray-700 hover:text-orange-500 transition-colors duration-300 font-medium">Book</Link>
+                        <Link to="/dashboard/products" className="text-gray-700 hover:text-orange-500 transition-colors duration-300 font-medium">Products</Link>
+                         <Link to="/dashboard/solar-estimate" className="text-gray-700 hover:text-orange-500 transition-colors duration-300 font-medium">Solar Estimate</Link>
                          <Link to="/dashboard#contact" onClick={handleNavClick('contact')} className="text-gray-700 hover:text-orange-500 transition-colors duration-300 font-medium">Contact</Link>
                   </div>
 
@@ -218,7 +220,7 @@ const scrollToHash = (hash) => {
                     onClick={() => setShowChat(true)}
                     className="bg-gradient-to-r from-blue-500 to-purple-600 text-white px-4 py-2 rounded-full font-medium hover:shadow-lg transition-all duration-300 flex items-center"
                   >
-                    <span className="mr-2">💬</span> Chat with Mentor
+                    <span className="mr-2">💬</span> Chat with Service Provider
                   </button>
                   <Link to="/profile" className="text-gray-700 hover:text-orange-500 transition-colors duration-300 font-medium">{authUser.name}</Link>
                   <button onClick={handleLogout} className="text-white bg-gray-800 hover:bg-gray-900 px-4 py-2 rounded-full font-medium transition-colors">Logout</button>

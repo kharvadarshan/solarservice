@@ -62,11 +62,11 @@ function App() {
             />
 
             <Route
-               path="/products"
+               path="/dashboard/products"
                element={<ProductsPage />} />
 
             <Route
-             path="/solar-estimate"
+             path="/dashboard/solar-estimate"
               element={<SolarEstimate />} />
 
             
