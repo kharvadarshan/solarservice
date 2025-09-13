@@ -1,10 +1,29 @@
+
 const express = require('express');
 const router = express.Router();
-const BookingController = require('../../controllers/BookingController');
-const {authenticateToken} = require('../../middleware/auth');
+const bookingController = require('../../controllers/BookingController');
+const { authenticateToken } = require('../../middleware/auth');
 
-router.post('/', authenticateToken, BookingController.create);
-router.get('/', BookingController.list);
-router.get('/my', authenticateToken, BookingController.my);
+router.post('/',authenticateToken, bookingController.createBooking);
 
-module.exports = router; 
+router.get('/', authenticateToken,bookingController.getAllBookings);
+
+router.get('/:id', authenticateToken, bookingController.getBookingById);
+
+
+
+module.exports = router;
+
+
+
+
+// const express = require('express');
+// const router = express.Router();
+// const BookingController = require('../../controllers/BookingController');
+// const {authenticateToken} = require('../../middleware/auth');
+
+// router.post('/', authenticateToken, BookingController.create);
+// router.get('/', BookingController.list);
+// router.get('/my', authenticateToken, BookingController.my);
+
+// module.exports = router; 
