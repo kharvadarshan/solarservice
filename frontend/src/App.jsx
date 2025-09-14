@@ -8,6 +8,7 @@ import Profile from './pages/Profile'
 import AdminPanel from './pages/AdminChat'
 import ChatButton from './components/ChatButton'
 import ProductsPage from "./pages/ProductsPage";
+import BillingPage from './pages/BillingPage'; 
 import SolarEstimate from "./pages/SolarEstimate";
 import { useSelector } from 'react-redux'
 
@@ -68,6 +69,16 @@ function App() {
             <Route
              path="/dashboard/solar-estimate"
               element={<SolarEstimate />} />
+
+             <Route
+          path="/products"
+          element={<ProductsPage />}
+        />
+              <Route
+          path="/billing"
+          element={<BillingPage />}
+        />
+
 
             
           </Routes>

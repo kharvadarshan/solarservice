@@ -186,7 +186,7 @@ const scrollToHash = (hash) => {
                 <span className="text-white font-bold text-xl">☀</span>
               </div>
               <span className="text-2xl font-bold bg-gradient-to-r from-yellow-600 to-orange-600 bg-clip-text text-transparent">
-                SolarTech
+                SolarMate
               </span>
             </div>
 

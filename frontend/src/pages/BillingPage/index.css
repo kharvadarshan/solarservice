@@ -1,0 +1,89 @@
+.billing-page {
+  max-width: 750px;
+  margin: 3rem auto;
+  padding: 2.5rem;
+  background: #ffffff;
+  border-radius: 16px;
+  box-shadow: 0 12px 35px rgba(0, 0, 0, 0.08);
+  font-family: "Segoe UI", Tahoma, sans-serif;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.billing-page:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.12);
+}
+
+.billing-page h2 {
+  text-align: center;
+  margin-bottom: 2.5rem;
+  color: #1e3a8a;
+  font-size: 2rem;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  border-bottom: 3px solid #2563eb;
+  display: inline-block;
+  padding-bottom: 0.4rem;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 2rem;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+th {
+  background: #2563eb;
+  color: white;
+  padding: 1rem;
+  text-align: center;
+  font-size: 1rem;
+}
+
+td {
+  border: 1px solid #e2e8f0;
+  padding: 1rem;
+  text-align: center;
+  font-size: 0.95rem;
+  color: #374151;
+  background: #f9fafb;
+}
+
+tr:nth-child(even) td {
+  background: #f1f5f9;
+}
+
+tr:hover td {
+  background: #e0f2fe;
+  transition: background 0.2s ease-in-out;
+}
+
+.total-cost {
+  font-weight: 700;
+  font-size: 1.7rem;
+  text-align: right;
+  margin-bottom: 2rem;
+  color: #16a34a;
+}
+
+.payment-btn {
+  width: 100%;
+  padding: 1.2rem;
+  background: linear-gradient(90deg, #2563eb 0%, #3adff5 100%);
+  border: none;
+  border-radius: 12px;
+  font-size: 1.2rem;
+  color: white;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 6px 15px rgba(37, 99, 235, 0.3);
+}
+
+.payment-btn:hover {
+  background: linear-gradient(90deg, #3adff5 0%, #2563eb 100%);
+  transform: scale(1.03);
+  box-shadow: 0 8px 20px rgba(37, 99, 235, 0.4);
+}
