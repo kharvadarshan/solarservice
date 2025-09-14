@@ -2,12 +2,40 @@
 // Basic controllers for POST and GET endpoints
 
 const Booking = require('../../Models/Booking');
+const path = require('path');
+const fs = require('fs');
 
 exports.createBooking = async (req, res) => {
   try {
-    const bookingData = req.body;
+    const bookingData = { ...req.body };
 
-	console.log(bookingData);
+    console.log('Received booking data:', bookingData);
+    console.log('Files received:', req.files);
+
+    // Add userId if user is authenticated
+    if (req.user && req.user.id) {
+      bookingData.userId = req.user.id;
+    }
+
+    // Parse JSON fields that were stringified in frontend
+    if (bookingData.selectedPanelType) {
+      bookingData.selectedPanelType = JSON.parse(bookingData.selectedPanelType);
+    }
+    if (bookingData.selectedCompany) {
+      bookingData.selectedCompany = JSON.parse(bookingData.selectedCompany);
+    }
+
+    // Handle file uploads
+    if (req.files) {
+      if (req.files.electricityBillImage) {
+        const electricityBillFile = req.files.electricityBillImage[0];
+        bookingData.electricityBillImage = electricityBillFile.path;
+      }
+      if (req.files.siteVideo) {
+        const siteVideoFile = req.files.siteVideo[0];
+        bookingData.siteVideo = siteVideoFile.path;
+      }
+    }
     
     // Validation can be added here if needed (e.g., using Joi or manual checks)
     
@@ -71,6 +99,33 @@ exports.getBookingById = async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Error retrieving booking',
+      error: error.message
+    });
+  }
+};
+
+exports.getMyBookings = async (req, res) => {
+  try {
+    const userId = req.user.id; // Assuming user ID is available in req.user from auth middleware
+    
+    const bookings = await Booking.find({ 
+      $or: [
+        { email: req.user.email }, // Match by email if no userId
+        { userId: userId } // Match by userId if available
+      ]
+    }).sort({ createdAt: -1 }).lean();
+    
+    res.status(200).json({
+      success: true,
+      message: 'User bookings retrieved successfully',
+      bookings: bookings,
+      count: bookings.length
+    });
+  } catch (error) {
+    console.error('Error retrieving user bookings:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error retrieving user bookings',
       error: error.message
     });
   }

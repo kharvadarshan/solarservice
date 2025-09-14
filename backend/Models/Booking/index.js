@@ -2,6 +2,11 @@
 const mongoose = require('mongoose');
 
 const bookingSchema = new mongoose.Schema({
+  userId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: false // Optional for now to maintain backward compatibility
+  },
   pincode: {
     type: String,
     required: [true, 'Pincode is required'],
@@ -72,6 +77,16 @@ const bookingSchema = new mongoose.Schema({
   address: {
     type: String,
     required: [true, 'Address is required'],
+    trim: true
+  },
+  electricityBillImage: {
+    type: String,
+    required: false,
+    trim: true
+  },
+  siteVideo: {
+    type: String,
+    required: false,
     trim: true
   },
   status: {

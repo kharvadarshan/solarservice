@@ -9,6 +9,8 @@ const ChatWithMentor = ({ user, onClose }) => {
   const [isConnected, setIsConnected] = useState(false);
   const [isTyping, setIsTyping] = useState(false);
   const [connectionError, setConnectionError] = useState(null);
+  const [chatSessionId, setChatSessionId] = useState(null);
+  const [isLoadingHistory, setIsLoadingHistory] = useState(true);
   const messagesEndRef = useRef(null);
   const textareaRef = useRef(null);
 
@@ -47,15 +49,18 @@ const ChatWithMentor = ({ user, onClose }) => {
       setConnectionError(null);
       
       // Join chat room
+      console.log('User object in ChatWithMentor:', user);
+      console.log('User.id:', user.id, 'Type:', typeof user.id);
+      
       newSocket.emit('join_chat', {
         userName: user.name,
-        userId: user.userId,
+        userId: user.id,
         userType: 'user'
       });
       
       console.log('Emitted join_chat with data:', {
         userName: user.name,
-        userId: user.userId,
+        userId: user.id,
         userType: 'user'
       });
     });
@@ -97,6 +102,42 @@ const ChatWithMentor = ({ user, onClose }) => {
           timestamp: new Date(),
           type: 'system'
         }]);
+      } else {
+        // Update the last message status
+        setMessages(prev => prev.map((msg, index) => {
+          if (index === prev.length - 1 && msg.status === 'sending') {
+            return {
+              ...msg,
+              id: response.messageId || msg.id,
+              status: response.delivered ? 'delivered' : 'sent'
+            };
+          }
+          return msg;
+        }));
+      }
+    });
+
+    // Chat history loading
+    newSocket.on('chat_history_loaded', (data) => {
+      console.log('Chat history loaded:', data);
+      setIsLoadingHistory(false);
+      
+      if (data.success && data.messages) {
+        const formattedMessages = data.messages.map(msg => ({
+          id: msg._id || Date.now() + Math.random(),
+          content: msg.content,
+          sender: msg.senderName || msg.sender,
+          timestamp: new Date(msg.timestamp),
+          type: msg.senderType === 'user' ? 'user' : msg.senderType === 'mentor' ? 'mentor' : 'system',
+          status: msg.status || 'delivered',
+          messageId: msg._id
+        }));
+        
+        setMessages(formattedMessages);
+        setChatSessionId(data.sessionId);
+      } else {
+        console.error('Failed to load chat history:', data.error);
+        setIsLoadingHistory(false);
       }
     });
 
@@ -152,7 +193,8 @@ const ChatWithMentor = ({ user, onClose }) => {
     const messageData = {
       message: inputMessage.trim(),
       recipientId: 'mentor',
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
+      sessionId: chatSessionId
     };
 
     console.log('Sending message:', messageData);
@@ -163,7 +205,8 @@ const ChatWithMentor = ({ user, onClose }) => {
       content: inputMessage.trim(),
       sender: user.name,
       timestamp: new Date(),
-      type: 'user'
+      type: 'user',
+      status: 'sending'
     };
 
     setMessages(prev => [...prev, optimisticMessage]);
@@ -252,7 +295,12 @@ const ChatWithMentor = ({ user, onClose }) => {
 
           {/* Messages Container */}
           <div className="flex-1 p-4 overflow-y-auto bg-gray-50">
-            {messages.length === 0 ? (
+            {isLoadingHistory ? (
+              <div className="flex flex-col items-center justify-center h-full text-gray-500">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600 mb-3"></div>
+                <p className="text-center">Loading chat history...</p>
+              </div>
+            ) : messages.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-full text-gray-500">
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 mb-3 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
@@ -273,8 +321,16 @@ const ChatWithMentor = ({ user, onClose }) => {
                         : 'bg-white text-gray-800 border border-gray-200 rounded-bl-none'}`}
                     >
                       <div className="text-sm whitespace-pre-wrap">{message.content}</div>
-                      <div className={`text-xs mt-1 ${message.type === 'user' ? 'text-indigo-200' : 'text-gray-500'}`}>
-                        {message.sender} • {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      <div className={`text-xs mt-1 flex items-center justify-between ${message.type === 'user' ? 'text-indigo-200' : 'text-gray-500'}`}>
+                        <span>{message.sender} • {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                        {message.type === 'user' && (
+                          <span className="ml-2">
+                            {message.status === 'sending' && <span className="text-indigo-300">⏳</span>}
+                            {message.status === 'sent' && <span className="text-indigo-300">✓</span>}
+                            {message.status === 'delivered' && <span className="text-indigo-300">✓✓</span>}
+                            {message.status === 'read' && <span className="text-blue-300">✓✓</span>}
+                          </span>
+                        )}
                       </div>
                     </div>
                   </div>

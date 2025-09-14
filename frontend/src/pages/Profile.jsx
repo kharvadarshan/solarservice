@@ -4,64 +4,6 @@ import api from '../api'
 import { useDispatch, useSelector } from 'react-redux'
 import { logout,removeToken } from '../slice/AuthSlice'
 
-function BookingProgress({ steps = [] }) {
-  if (!Array.isArray(steps) || steps.length === 0) return null
-
-  const total = steps.length
-  const currentIndex = steps.findIndex(s => s.status === 'in_progress')
-  const lastDoneIndex = steps.reduce((acc, s, i) => (s.status === 'done' ? i : acc), -1)
-  const activeIndex = currentIndex >= 0 ? currentIndex : lastDoneIndex
-  const progressPercent = total > 1 ? Math.max(0, activeIndex) / (total - 1) * 100 : 0
-
-  return (
-    <div className="w-full">
-      <div className="relative mt-2 mb-8">
-        <div className="absolute left-0 right-0 top-1/2 -translate-y-1/2 h-1.5 bg-gray-200 rounded"></div>
-        <div className="absolute left-0 top-1/2 -translate-y-1/2 h-1.5 rounded bg-gradient-to-r from-blue-500 to-blue-600 transition-all duration-500" style={{ width: `${progressPercent}%` }}></div>
-        <div className="relative flex justify-between">
-          {steps.map((s, idx) => {
-            const isCompleted = s.status === 'done' || idx < activeIndex
-            const isCurrent = idx === activeIndex && (s.status === 'in_progress' || s.status === 'pending')
-            const circleBase = 'relative flex items-center justify-center w-8 h-8 rounded-full text-xs font-semibold shadow-sm'
-            const circleClass = isCompleted
-              ? 'bg-blue-600 text-white'
-              : isCurrent
-              ? 'bg-white text-blue-600 border-2 border-blue-600 ring-4 ring-blue-100 animate-pulse'
-              : 'bg-gray-200 text-gray-600'
-            return (
-              <div key={s.key || idx} className="flex flex-col items-center" title={s.title} aria-label={s.title}>
-                <div className={`${circleBase} ${circleClass}`}>
-                  {isCompleted ? '✓' : idx + 1}
-                </div>
-                <div className="mt-2 text-xs text-gray-800 text-center w-24 leading-snug hidden sm:block">{s.title}</div>
-              </div>
-            )
-          })}
-        </div>
-      </div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4">
-        {steps.map((s, idx) => (
-          <div key={s.key || idx} className="text-xs">
-            <div className="font-medium text-gray-900 flex items-center gap-2">
-              {s.status === 'done' ? (
-                <span className="inline-flex w-2.5 h-2.5 rounded-full bg-blue-600"></span>
-              ) : s.status === 'in_progress' ? (
-                <span className="inline-flex w-2.5 h-2.5 rounded-full bg-blue-400"></span>
-              ) : (
-                <span className="inline-flex w-2.5 h-2.5 rounded-full bg-gray-300"></span>
-              )}
-              <span>{s.title}</span>
-            </div>
-            <div className="text-gray-600 mt-0.5">{s.description}</div>
-            {s.completedAt && (
-              <div className="text-gray-500 mt-0.5">{new Date(s.completedAt).toLocaleDateString()}</div>
-            )}
-          </div>
-        ))}
-      </div>
-    </div>
-  )
-}
 
 function StatusBadge({ status }) {
   const map = {
@@ -81,6 +23,7 @@ export default function Profile() {
   const [loggingOut, setLoggingOut] = useState(false)
   const [bookings, setBookings] = useState([])
   const [bookingsError, setBookingsError] = useState('')
+  const [activeTab, setActiveTab] = useState('requested')
 
  
 
@@ -106,6 +49,174 @@ export default function Profile() {
       .slice(0, 2)
       .map(part => part[0]?.toUpperCase())
       .join('') || 'U'
+  }
+
+  const getBookingsByStatus = (status) => {
+    switch(status) {
+      case 'requested':
+        return bookings.filter(b => b.status === 'pending');
+      case 'in-progress':
+        return bookings.filter(b => b.status === 'confirmed');
+      case 'completed':
+        return bookings.filter(b => b.status === 'completed');
+      case 'incomplete':
+        return bookings.filter(b => b.status === 'rejected');
+      default:
+        return [];
+    }
+  }
+
+  const tabs = [
+    { 
+      id: 'requested', 
+      label: 'Requested', 
+      icon: '⏳', 
+      count: getBookingsByStatus('requested').length,
+      color: 'yellow'
+    },
+    { 
+      id: 'in-progress', 
+      label: 'In Progress', 
+      icon: '🚀', 
+      count: getBookingsByStatus('in-progress').length,
+      color: 'blue'
+    },
+    { 
+      id: 'completed', 
+      label: 'Completed', 
+      icon: '✅', 
+      count: getBookingsByStatus('completed').length,
+      color: 'green'
+    },
+    { 
+      id: 'incomplete', 
+      label: 'Incomplete', 
+      icon: '❌', 
+      count: getBookingsByStatus('incomplete').length,
+      color: 'red'
+    }
+  ]
+
+  const renderBookingCard = (booking) => (
+    <div key={booking._id} className="bg-white rounded-lg p-4 shadow-sm border border-gray-200">
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-3">
+        <div className="flex-1">
+          <div className="font-semibold text-gray-900">{booking.address}</div>
+          <div className="text-sm text-gray-600">
+            {booking.selectedCompany?.name && (
+              <span>Company: {booking.selectedCompany.name} • </span>
+            )}
+            {booking.selectedPanelType?.name && (
+              <span>Panel: {booking.selectedPanelType.name} • </span>
+            )}
+            {booking.calculatedPower && (
+              <span>Power: {booking.calculatedPower} kW</span>
+            )}
+          </div>
+          {booking.electricityBill && (
+            <div className="text-sm text-gray-500 mt-1">
+              Bill Amount: ₹{booking.electricityBill} • Service: {booking.serviceProvider}
+            </div>
+          )}
+        </div>
+        <div className="flex items-center gap-3 text-sm">
+          <StatusBadge status={booking.status} />
+          <div className="text-gray-500">
+            {new Date(booking.createdAt).toLocaleDateString()}
+          </div>
+        </div>
+      </div>
+      
+      {/* Booking Details */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+        <div>
+          <span className="text-gray-600">Name:</span>
+          <div className="font-medium">{booking.name}</div>
+        </div>
+        <div>
+          <span className="text-gray-600">Email:</span>
+          <div className="font-medium">{booking.email}</div>
+        </div>
+        <div>
+          <span className="text-gray-600">Phone:</span>
+          <div className="font-medium">{booking.phone}</div>
+        </div>
+      </div>
+
+      {/* File uploads status */}
+      {(booking.electricityBillImage || booking.siteVideo) && (
+        <div className="mt-3 pt-3 border-t border-gray-100">
+          <div className="text-sm text-gray-600 mb-2">📎 Uploaded Documents:</div>
+          <div className="flex gap-4 text-sm">
+            {booking.electricityBillImage && (
+              <span className="text-green-600">✓ Electricity Bill</span>
+            )}
+            {booking.siteVideo && (
+              <span className="text-green-600">✓ Site Video</span>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Company details if confirmed */}
+      {booking.status === 'confirmed' && booking.selectedCompany && (
+        <div className="mt-3 pt-3 border-t border-gray-100">
+          <div className="text-sm text-gray-600 mb-2">💰 Investment Details:</div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+            <div>
+              <span className="text-gray-600">Tentative:</span>
+              <div className="font-medium">₹{booking.selectedCompany.tentativeAmount?.toLocaleString()}</div>
+            </div>
+            <div>
+              <span className="text-gray-600">Subsidy:</span>
+              <div className="font-medium text-green-600">₹{booking.selectedCompany.subsidyAmount?.toLocaleString()}</div>
+            </div>
+            <div>
+              <span className="text-gray-600">Effective:</span>
+              <div className="font-medium text-orange-600">₹{booking.selectedCompany.effectiveAmount?.toLocaleString()}</div>
+            </div>
+            <div>
+              <span className="text-gray-600">ROI:</span>
+              <div className="font-medium">{booking.selectedCompany.roi}</div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+
+  const renderEmptyState = (tab) => {
+    const emptyStates = {
+      'requested': {
+        icon: '⏳',
+        title: 'No requested bookings',
+        description: 'Your new booking requests will appear here while waiting for approval.'
+      },
+      'in-progress': {
+        icon: '🚀',
+        title: 'No bookings in progress',
+        description: 'Your confirmed bookings will appear here once they are approved.'
+      },
+      'completed': {
+        icon: '✅',
+        title: 'No completed bookings',
+        description: 'Your completed solar installations will be shown here.'
+      },
+      'incomplete': {
+        icon: '❌',
+        title: 'No incomplete bookings',
+        description: 'Any rejected or cancelled bookings will appear here.'
+      }
+    }
+
+    const state = emptyStates[tab.id]
+    return (
+      <div className="text-center py-12">
+        <div className="text-6xl mb-4">{state.icon}</div>
+        <div className="text-gray-600 text-lg mb-2">{state.title}</div>
+        <div className="text-gray-500">{state.description}</div>
+      </div>
+    )
   }
 
   const handleLogout = async () => {
@@ -175,34 +286,68 @@ export default function Profile() {
           </div>
         </div>
 
-        {/* Bookings Timeline */}
+        {/* Bookings with Tabs */}
         <div className="mt-8 bg-white shadow rounded-2xl p-8">
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center justify-between mb-6">
             <h2 className="text-xl font-semibold text-gray-900">My Bookings</h2>
             <Link to="/book" className="text-sm text-orange-600 hover:underline">+ New Booking</Link>
           </div>
+          
           {bookingsError ? (
-            <div className="text-red-600">{bookingsError}</div>
+            <div className="text-red-600 bg-red-50 border border-red-200 rounded-lg p-4">{bookingsError}</div>
           ) : bookings.length === 0 ? (
-            <div className="text-gray-600">No bookings yet.</div>
-          ) : (
-            <div className="space-y-6">
-              {bookings.map((b) => (
-                <div key={b._id} className="border border-gray-200 rounded-xl p-6">
-                  <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-4">
-                    <div>
-                      <div className="font-semibold text-gray-900">{b.address}</div>
-                      <div className="text-sm text-gray-600">Preferred: {new Date(b.preferredDate).toLocaleDateString()}</div>
-                    </div>
-                    <div className="flex items-center gap-3 text-sm">
-                      <StatusBadge status={b.status} />
-                      <div className="text-gray-500">Created: {new Date(b.createdAt).toLocaleString()}</div>
-                    </div>
-                  </div>
-                  <BookingProgress steps={b.steps} />
-                </div>
-              ))}
+            <div className="text-center py-12">
+              <div className="text-6xl mb-4">📋</div>
+              <div className="text-gray-600 text-lg mb-2">No bookings yet</div>
+              <div className="text-gray-500">Start your solar journey by creating a new booking</div>
             </div>
+          ) : (
+            <>
+              {/* Tabs */}
+              <div className="border-b border-gray-200 mb-6">
+                <nav className="-mb-px flex space-x-8">
+                  {tabs.map((tab) => (
+                    <button
+                      key={tab.id}
+                      onClick={() => setActiveTab(tab.id)}
+                      className={`py-2 px-1 border-b-2 font-medium text-sm flex items-center gap-2 ${
+                        activeTab === tab.id
+                          ? `border-${tab.color}-500 text-${tab.color}-600`
+                          : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                      }`}
+                    >
+                      <span>{tab.icon}</span>
+                      <span>{tab.label}</span>
+                      <span className={`ml-1 px-2 py-0.5 rounded-full text-xs ${
+                        activeTab === tab.id
+                          ? `bg-${tab.color}-100 text-${tab.color}-600`
+                          : 'bg-gray-100 text-gray-600'
+                      }`}>
+                        {tab.count}
+                      </span>
+                    </button>
+                  ))}
+                </nav>
+              </div>
+
+              {/* Tab Content */}
+              <div className="min-h-[400px]">
+                {(() => {
+                  const currentBookings = getBookingsByStatus(activeTab);
+                  const currentTab = tabs.find(tab => tab.id === activeTab);
+                  
+                  if (currentBookings.length === 0) {
+                    return renderEmptyState(currentTab);
+                  }
+
+                  return (
+                    <div className="space-y-4">
+                      {currentBookings.map(renderBookingCard)}
+                    </div>
+                  );
+                })()}
+              </div>
+            </>
           )}
         </div>
       </div>

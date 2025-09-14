@@ -15,7 +15,9 @@ export default function SolarBookingForm() {
     name: '',
     email: '',
     phone: '',
-    address: ''
+    address: '',
+    electricityBillImage: null,
+    siteVideo: null
   });
   const [submissionStatus, setSubmissionStatus] = useState(null); // New state for submission status
 
@@ -88,6 +90,13 @@ export default function SolarBookingForm() {
     }));
   };
 
+  const handleFileChange = (field, file) => {
+    setFormData(prev => ({
+      ...prev,
+      [field]: file
+    }));
+  };
+
   const calculateSolarPower = () => {
     const monthlyBill = parseInt(formData.electricityBill);
     const multiplier = formData.billingCycle === 'two-month' ? 0.5 : 1;
@@ -117,9 +126,34 @@ export default function SolarBookingForm() {
 
   const handleSubmit = async () => {
     try {
-      const response = await api.post('/api/bookings',formData);
+      const formDataToSend = new FormData();
       
-     
+      // Add all form fields
+      formDataToSend.append('pincode', formData.pincode);
+      formDataToSend.append('electricityBill', formData.electricityBill);
+      formDataToSend.append('serviceProvider', formData.serviceProvider);
+      formDataToSend.append('billingCycle', formData.billingCycle);
+      formDataToSend.append('calculatedPower', formData.calculatedPower);
+      formDataToSend.append('selectedPanelType', JSON.stringify(formData.selectedPanelType));
+      formDataToSend.append('selectedCompany', JSON.stringify(formData.selectedCompany));
+      formDataToSend.append('name', formData.name);
+      formDataToSend.append('email', formData.email);
+      formDataToSend.append('phone', formData.phone);
+      formDataToSend.append('address', formData.address);
+      
+      // Add files if they exist
+      if (formData.electricityBillImage) {
+        formDataToSend.append('electricityBillImage', formData.electricityBillImage);
+      }
+      if (formData.siteVideo) {
+        formDataToSend.append('siteVideo', formData.siteVideo);
+      }
+
+      const response = await api.post('/api/bookings', formDataToSend, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
 
       console.log(response.data);
 
@@ -136,7 +170,9 @@ export default function SolarBookingForm() {
           name: '',
           email: '',
           phone: '',
-          address: ''
+          address: '',
+          electricityBillImage: null,
+          siteVideo: null
         });
         setActiveIndex(0);
       } else {
@@ -548,6 +584,51 @@ export default function SolarBookingForm() {
                   required
                 />
               </div>
+            </div>
+
+            {/* File Upload Section */}
+            <div className="mt-8">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">📎 Upload Documents</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className="flex items-center text-sm font-medium text-gray-700 mb-2">
+                    <span className="mr-2">📄</span>
+                    Electricity Bill Image
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => handleFileChange('electricityBillImage', e.target.files[0])}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-orange-50 file:text-orange-700 hover:file:bg-orange-100"
+                    />
+                    {formData.electricityBillImage && (
+                      <p className="text-sm text-green-600 mt-1">✓ {formData.electricityBillImage.name}</p>
+                    )}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="flex items-center text-sm font-medium text-gray-700 mb-2">
+                    <span className="mr-2">🎥</span>
+                    Site Video
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="file"
+                      accept="video/*"
+                      onChange={(e) => handleFileChange('siteVideo', e.target.files[0])}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-orange-50 file:text-orange-700 hover:file:bg-orange-100"
+                    />
+                    {formData.siteVideo && (
+                      <p className="text-sm text-green-600 mt-1">✓ {formData.siteVideo.name}</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+              <p className="text-sm text-gray-500 mt-2">
+                Upload your electricity bill image and a video of your installation site to help us provide better estimates.
+              </p>
             </div>
 
             <div className="bg-gradient-to-r from-green-50 to-blue-50 border border-green-200 rounded-xl p-6">

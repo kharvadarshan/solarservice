@@ -24,9 +24,16 @@ const chatMessageSchema = new mongoose.Schema({
     type: String, // Can be userId or 'mentor' for general mentor chat
     required: true
   },
+  recipientName: {
+    type: String,
+    required: false
+  },
   isRead: {
     type: Boolean,
     default: false
+  },
+  readAt: {
+    type: Date
   },
   timestamp: {
     type: Date,
@@ -34,8 +41,23 @@ const chatMessageSchema = new mongoose.Schema({
   },
   messageType: {
     type: String,
-    enum: ['text', 'system', 'file'],
+    enum: ['text', 'system', 'file', 'image', 'document'],
     default: 'text'
+  },
+  status: {
+    type: String,
+    enum: ['sent', 'delivered', 'read'],
+    default: 'sent'
+  },
+  chatSessionId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'ChatSession',
+    required: false
+  },
+  replyTo: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'ChatMessage',
+    required: false
   }
 });
 

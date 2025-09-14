@@ -13,7 +13,7 @@ const chatSessionSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ['active', 'waiting', 'closed'],
+    enum: ['active', 'waiting', 'closed', 'paused'],
     default: 'waiting'
   },
   startTime: {
@@ -27,7 +27,18 @@ const chatSessionSchema = new mongoose.Schema({
     type: Date,
     default: Date.now
   },
+  lastMessage: {
+    type: String,
+    maxlength: 1000
+  },
+  lastMessageTime: {
+    type: Date
+  },
   messageCount: {
+    type: Number,
+    default: 0
+  },
+  unreadCount: {
     type: Number,
     default: 0
   },
@@ -43,6 +54,14 @@ const chatSessionSchema = new mongoose.Schema({
   feedback: {
     type: String,
     maxlength: 500
+  },
+  isUserOnline: {
+    type: Boolean,
+    default: false
+  },
+  isMentorOnline: {
+    type: Boolean,
+    default: false
   }
 });
 
