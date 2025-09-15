@@ -15,9 +15,6 @@ const orderSchema = new mongoose.Schema({
     ref: "User",
     required: false
   },
-  // Optionally, you could add anonymous info, e.g.:
-  // name: String,
-  // email: String
 });
 
 module.exports = mongoose.model("Order", orderSchema);
