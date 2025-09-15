@@ -40,9 +40,7 @@ exports.createOrder = async (req, res) => {
       newOrder.user = req.body.userId;
     }
 
-    // Optionally add anonymous name/email here if you want to track
-    // if (req.body.name) newOrder.name = req.body.name;
-    // if (req.body.email) newOrder.email = req.body.email;
+    
 
     const order = new Order(newOrder);
     await order.save();
