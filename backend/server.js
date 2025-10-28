@@ -1,5 +1,3 @@
-
-
 const express = require('express');
 const cors = require('cors');
 const bodyParser  = require('body-parser')
@@ -10,8 +8,11 @@ const authRoutes = require('./routes/AuthRoutes');
 const adminRoutes = require('./routes/AdminRoutes');
 const chatRoutes = require('./routes/ChatRoutes');
 const productRoutes = require("./routes/ProductRoutes");
+const uploadRoutes = require('./routes/uploads');
+const paymentRoutes= require('./routes/PaymentRoutes');
 const cookieParser = require('cookie-parser');
 const http=require('http');
+const Razorpay = require('razorpay');
 const socketIo = require('socket.io');
 const app = express();
 
@@ -30,6 +31,11 @@ const io = socketIo(server, {
   allowEIO3: true,
   transports: ['websocket', 'polling']
 });
+
+
+
+
+
 
 app.use(cors({
   origin: [ "http://localhost:3000","http://localhost:5174","http://localhost:5173"],
@@ -450,41 +456,128 @@ io.on('connection', (socket) => {
         messageType: 'mentor'
       };
 
-      // Save message to database (if MongoDB is connected)
-    
+      // Save message to database with proper ObjectId handling
+      let savedMessage = null;
       try {
         const ChatMessage = require('./Models/ChatMessage');
-        const newMessage = new ChatMessage({
+        const ChatSession = require('./Models/ChatSession');
+        const mongoose = require('mongoose');
+        
+        // Convert userIds to ObjectId if they're strings (mongoose v8 compatible)
+        let mentorObjectId, recipientObjectId;
+        try {
+          console.log('Mentor userId:', mentor.userId, 'Type:', typeof mentor.userId);
+          console.log('Recipient userId:', recipientUserId, 'Type:', typeof recipientUserId);
+          
+          if (mongoose.Types.ObjectId.isValid(mentor.userId)) {
+            mentorObjectId = typeof mentor.userId === 'string' ? mentor.userId : mentor.userId;
+          } else {
+            console.error('Invalid mentor userId format:', mentor.userId);
+            throw new Error('Invalid mentor user ID format');
+          }
+          
+          if (mongoose.Types.ObjectId.isValid(recipientUserId)) {
+            recipientObjectId = typeof recipientUserId === 'string' ? recipientUserId : recipientUserId;
+          } else {
+            console.error('Invalid recipient userId format:', recipientUserId);
+            throw new Error('Invalid recipient user ID format');
+          }
+        } catch (error) {
+          console.error('Error converting userIds to ObjectId:', error);
+          throw new Error('Invalid user ID format');
+        }
+        
+        // Create new message
+        console.log('Creating mentor message with data:', {
           content: message.trim(),
-          sender: mentor.userId,
+          sender: mentorObjectId,
           senderName: mentor.userName,
           senderType: 'mentor',
-          recipientId: recipientUserId,
-          timestamp: new Date()
+          recipientId: recipientObjectId,
+          recipientName: 'User',
+          timestamp: new Date(),
+          status: 'sent'
         });
-        await newMessage.save();
-        console.log('Mentor reply saved to database');
+        
+        savedMessage = new ChatMessage({
+          content: message.trim(),
+          sender: mentorObjectId,
+          senderName: mentor.userName,
+          senderType: 'mentor',
+          recipientId: recipientObjectId,
+          recipientName: 'User',
+          timestamp: new Date(),
+          status: 'sent'
+        });
+        
+        console.log('Attempting to save mentor message to database...');
+        await savedMessage.save();
+        console.log('Mentor message saved to database with ID:', savedMessage._id);
+
+        // Update or create chat session
+        let chatSession = await ChatSession.findOne({ 
+          userId: recipientObjectId 
+        });
+        
+        if (!chatSession) {
+          chatSession = new ChatSession({
+            userId: recipientObjectId,
+            mentorId: mentorObjectId,
+            status: 'active'
+          });
+        } else {
+          chatSession.mentorId = mentorObjectId;
+          chatSession.status = 'active';
+        }
+        
+        chatSession.lastMessage = message.trim();
+        chatSession.lastMessageTime = new Date();
+        chatSession.lastActivity = new Date();
+        chatSession.messageCount = (chatSession.messageCount || 0) + 1;
+        await chatSession.save();
+
       } catch (dbError) {
-        console.error('Database save error:', dbError);
+        console.error('Database save error for mentor message:', dbError);
+        console.error('Error details:', {
+          message: dbError.message,
+          name: dbError.name,
+          code: dbError.code,
+          stack: dbError.stack
+        });
+        socket.emit('message_sent', { 
+          success: false, 
+          error: `Failed to save message: ${dbError.message}` 
+        });
+        return;
       }
   
 
-      // Send to specific user
+      // Send to specific user if they're online
       const userSocket = Array.from(activeUsers.entries())
         .find(([socketId, user]) => user.userId === recipientUserId);
       
       let messageDelivered = false;
       if (userSocket) {
-        io.to(userSocket[0]).emit('receive_message', messageData);
+        io.to(userSocket[0]).emit('receive_message', {
+          ...messageData,
+          messageId: savedMessage._id
+        });
         messageDelivered = true;
         console.log(`Mentor reply sent to user: ${recipientUserId}`);
+        
+        // Update message status to delivered
+        if (savedMessage) {
+          savedMessage.status = 'delivered';
+          await savedMessage.save();
+        }
       }
 
       // Confirm message sent to mentor
       socket.emit('message_sent', { 
         success: true, 
-        messageId: Date.now(),
-        delivered: messageDelivered
+        messageId: savedMessage._id,
+        delivered: messageDelivered,
+        recipientOnline: !!userSocket
       });
 
     } catch (error) {
@@ -496,29 +589,164 @@ io.on('connection', (socket) => {
     }
   });
 
-  // Handle getting chat history
-  socket.on('get_chat_history', async ({ userId }) => {
+  // Handle getting conversation history between mentor and specific user
+  socket.on('get_conversation_history', async ({ userId }) => {
     try {
-      // If using MongoDB, uncomment this:
-    
+      const mentor = activeUsers.get(socket.id);
+      if (!mentor || mentor.userType !== 'mentor') {
+        socket.emit('conversation_history', {
+          success: false,
+          error: 'Only mentors can access conversation history'
+        });
+        return;
+      }
+
       const ChatMessage = require('./Models/ChatMessage');
+      const mongoose = require('mongoose');
+      
+      // Convert userIds to ObjectId if they're strings (mongoose v8 compatible)
+      let mentorObjectId, userObjectId;
+      try {
+        if (mongoose.Types.ObjectId.isValid(mentor.userId)) {
+          mentorObjectId = typeof mentor.userId === 'string' ? mentor.userId : mentor.userId;
+        } else {
+          console.error('Invalid mentor userId format:', mentor.userId);
+          throw new Error('Invalid mentor user ID format');
+        }
+        
+        if (mongoose.Types.ObjectId.isValid(userId)) {
+          userObjectId = typeof userId === 'string' ? userId : userId;
+        } else {
+          console.error('Invalid userId format:', userId);
+          throw new Error('Invalid user ID format');
+        }
+      } catch (error) {
+        console.error('Error converting userIds to ObjectId:', error);
+        throw new Error('Invalid user ID format');
+      }
+      
       const messages = await ChatMessage.find({
         $or: [
-          { sender: userId },
-          { recipientId: userId }
+          { sender: mentorObjectId, recipientId: userObjectId },
+          { sender: userObjectId, recipientId: mentorObjectId }
         ]
-      }).sort({ timestamp: 1 }).limit(50);
+      })
+      .sort({ timestamp: 1 })
+      .limit(100)
+      .populate('sender', 'name email');
 
-      socket.emit('chat_history', messages);
-    
-      
-      // For now, send empty history
-      socket.emit('chat_history', []);
+      // Mark messages as read
+      await ChatMessage.updateMany(
+        { 
+          sender: userObjectId, 
+          recipientId: mentorObjectId, 
+          isRead: false 
+        },
+        { 
+          isRead: true, 
+          readAt: new Date(),
+          status: 'read'
+        }
+      );
+
+      socket.emit('conversation_history', {
+        success: true,
+        messages: messages,
+        userId: userId
+      });
     } catch (error) {
-      console.error('Error fetching chat history:', error);
-      socket.emit('chat_history', []);
+      console.error('Error fetching conversation history:', error);
+      socket.emit('conversation_history', {
+        success: false,
+        error: 'Failed to fetch conversation history'
+      });
     }
   });
+
+  // Handle getting conversation history between mentor and specific user
+socket.on('get_conversation_history', async ({ userId }) => {
+  try {
+    const mentor = activeUsers.get(socket.id);
+    if (!mentor || mentor.userType !== 'mentor') {
+      socket.emit('conversation_history', {
+        success: false,
+        error: 'Only mentors can access conversation history'
+      });
+      return;
+    }
+
+    const ChatMessage = require('./Models/ChatMessage');
+    const mongoose = require('mongoose');
+    
+    console.log('Fetching conversation history for user:', userId, 'by mentor:', mentor.userId);
+    
+    // Use string comparison instead of ObjectId for flexibility
+    const messages = await ChatMessage.find({
+      $or: [
+        // Messages from user to mentor
+        { 
+          $and: [
+            { sender: userId },
+            { recipientId: mentor.userId }
+          ]
+        },
+        // Messages from mentor to user
+        { 
+          $and: [
+            { sender: mentor.userId },
+            { recipientId: userId }
+          ]
+        },
+        // Legacy messages (user to 'mentor' generic)
+        { 
+          $and: [
+            { sender: userId },
+            { recipientId: 'mentor' }
+          ]
+        },
+        // Messages where user is recipient and mentor is sender
+        { 
+          $and: [
+            { recipientId: userId },
+            { sender: mentor.userId }
+          ]
+        }
+      ]
+    })
+    .sort({ timestamp: 1 }) // Oldest first for proper chat flow
+    .limit(100)
+    .populate('sender', 'name email');
+
+    console.log(`Found ${messages.length} messages for conversation`);
+
+    // Mark user's messages as read when mentor views them
+    await ChatMessage.updateMany(
+      { 
+        sender: userId,
+        recipientId: { $in: [mentor.userId, 'mentor'] },
+        isRead: false 
+      },
+      { 
+        isRead: true, 
+        readAt: new Date(),
+        status: 'read'
+      }
+    );
+
+    socket.emit('conversation_history', {
+      success: true,
+      messages: messages,
+      userId: userId
+    });
+
+  } catch (error) {
+    console.error('Error fetching conversation history:', error);
+    socket.emit('conversation_history', {
+      success: false,
+      error: 'Failed to fetch conversation history: ' + error.message
+    });
+  }
+});
 
   // Handle disconnect
   socket.on('disconnect', (reason) => {
@@ -561,14 +789,14 @@ io.on('error', (error) => {
 });
 
 // Routes
+app.use("/api/v1",paymentRoutes);
 app.use('/api/bookings', bookingRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/chat', chatRoutes);
 app.use("/api/products", productRoutes);
 
-
-
+app.use('/api', uploadRoutes);
 const PORT = process.env.PORT || 5000;
 
 server.listen(PORT,()=>{

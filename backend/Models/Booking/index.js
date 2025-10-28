@@ -89,9 +89,18 @@ const bookingSchema = new mongoose.Schema({
     required: false,
     trim: true
   },
-  status: {
+   quotationPdf: {
     type: String,
-    enum: ['pending', 'confirmed', 'rejected'],
+    required: false,
+    trim: true
+  },
+  quotationUploadedAt: {
+    type: Date,
+    required: false
+  },
+   status: {
+    type: String,
+    enum: ['pending', 'survey', 'quoted', 'installation', 'confirmed', 'rejected'],
     default: 'pending'
   },
   createdAt: {

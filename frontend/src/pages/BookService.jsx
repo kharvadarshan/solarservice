@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
 import api from '../api';
 
 
@@ -672,8 +673,11 @@ export default function SolarBookingForm() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-orange-50 via-yellow-50 to-blue-50 py-8 px-4">
+                          <Link to="/dashboard" className="px-5 py-2 rounded-full border border-gray-300 text-gray-700 hover:border-orange-500 hover:text-orange-600 transition-colors">Back to Home</Link>
+
       <div className="max-w-4xl mx-auto">
         <div className="mb-8">
+        
           <div className="flex items-center justify-between mb-6">
             {steps.map((step, index) => (
               <div key={index} className="flex flex-col items-center">

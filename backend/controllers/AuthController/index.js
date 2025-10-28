@@ -88,3 +88,69 @@ exports.profile =async (req, res) => {
     res.status(401).json({ message: 'Invalid token' });
   }
 }
+
+// Get all users for mentor dashboard
+exports.getAllUsers = async (req, res) => {
+  try {
+    // Check if user is mentor or admin
+    if (req.user.userType !== 'mentor' && req.user.userType !== 'admin') {
+      return res.status(403).json({ error: 'Access denied. Only mentors and admins can view all users.' });
+    }
+
+    const users = await User.find({ userType: 'user' })
+      .select('_id name email lastSeen createdAt')
+      .sort({ lastSeen: -1 });
+
+    // Get chat session info for each user
+    const ChatSession = require('../../Models/ChatSession');
+    const ChatMessage = require('../../Models/ChatMessage');
+    
+    const usersWithChatInfo = await Promise.all(
+      users.map(async (user) => {
+        // Get latest chat session
+        const latestSession = await ChatSession.findOne({ userId: user._id })
+          .sort({ lastActivity: -1 });
+
+        // Get unread message count for this mentor
+        const unreadCount = await ChatMessage.countDocuments({
+          recipientId: req.user.userId,
+          sender: user._id,
+          isRead: false
+        });
+
+        // Get last message
+        const lastMessage = await ChatMessage.findOne({
+          $or: [
+            { sender: user._id, recipientId: req.user.userId },
+            { sender: req.user.userId, recipientId: user._id }
+          ]
+        }).sort({ timestamp: -1 });
+
+        return {
+          id: user._id,
+          name: user.name,
+          email: user.email,
+          lastSeen: user.lastSeen,
+          createdAt: user.createdAt,
+          isOnline: false, // Will be updated by socket events
+          unreadCount,
+          lastMessage: lastMessage ? {
+            content: lastMessage.content,
+            timestamp: lastMessage.timestamp,
+            sender: lastMessage.senderName
+          } : null,
+          hasActiveSession: !!latestSession
+        };
+      })
+    );
+
+    res.json({
+      success: true,
+      users: usersWithChatInfo,
+      count: usersWithChatInfo.length
+    });
+  } catch (error) {
+    console.error('Error fetching all users:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+};

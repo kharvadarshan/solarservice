@@ -29,11 +29,11 @@ exports.createBooking = async (req, res) => {
     if (req.files) {
       if (req.files.electricityBillImage) {
         const electricityBillFile = req.files.electricityBillImage[0];
-        bookingData.electricityBillImage = electricityBillFile.path;
+        bookingData.electricityBillImage = electricityBillFile.filename;
       }
       if (req.files.siteVideo) {
         const siteVideoFile = req.files.siteVideo[0];
-        bookingData.siteVideo = siteVideoFile.path;
+        bookingData.siteVideo = siteVideoFile.filename;
       }
     }
     
@@ -56,6 +56,246 @@ exports.createBooking = async (req, res) => {
     });
   }
 };
+
+const saveFileInfo = (file) => {
+  const fileInfo = {
+    originalName: file.originalname,
+    filename: file.filename,
+    url: `http://localhost:5000/api/uploads/${file.filename}`,
+    path: file.path,
+    size: file.size,
+    mimetype: file.mimetype
+  }
+  return fileInfo
+}
+
+
+exports.updateBookingStatus = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+
+    console.log('Updating booking status:', { id, status });
+
+    // Validate status
+    const validStatuses = ['pending', 'survey', 'quoted', 'installation', 'confirmed', 'rejected'];
+    if (!validStatuses.includes(status)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid status. Must be one of: pending, survey, quoted, installation, confirmed, rejected'
+      });
+    }
+
+    // Find and update booking
+    const booking = await Booking.findByIdAndUpdate(
+      id,
+      { 
+        status: status,
+        updatedAt: Date.now()
+      },
+      { new: true, runValidators: true }
+    );
+
+    if (!booking) {
+      return res.status(404).json({
+        success: false,
+        message: 'Booking not found'
+      });
+    }
+
+    res.json({
+      success: true,
+      message: 'Booking status updated successfully',
+      data: booking
+    });
+
+  } catch (error) {
+    console.error('Error updating booking status:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error updating booking status',
+      error: error.message
+    });
+  }
+};
+
+
+// controllers/BookingController.js
+
+// Upload quotation PDF
+exports.uploadQuotation = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    if (!req.file) {
+      return res.status(400).json({
+        success: false,
+        message: 'No quotation file uploaded'
+      });
+    }
+
+    console.log('Uploading quotation for booking:', id, 'File:', req.file.filename);
+
+    // Update booking with quotation info
+    const booking = await Booking.findByIdAndUpdate(
+      id,
+      { 
+        quotationPdf: req.file.filename,
+        quotationUploadedAt: new Date(),
+        status: 'quoted', // Automatically update status to quoted
+        updatedAt: Date.now()
+      },
+      { new: true, runValidators: true }
+    );
+
+    if (!booking) {
+      // Delete the uploaded file if booking not found
+      fs.unlinkSync(req.file.path);
+      return res.status(404).json({
+        success: false,
+        message: 'Booking not found'
+      });
+    }
+
+    res.json({
+      success: true,
+      message: 'Quotation uploaded successfully',
+      data: {
+        quotationPdf: booking.quotationPdf,
+        quotationUploadedAt: booking.quotationUploadedAt,
+        status: booking.status
+      }
+    });
+
+  } catch (error) {
+    console.error('Error uploading quotation:', error);
+    
+    // Delete the uploaded file if error occurred
+    if (req.file) {
+      fs.unlinkSync(req.file.path);
+    }
+    
+    res.status(500).json({
+      success: false,
+      message: 'Error uploading quotation',
+      error: error.message
+    });
+  }
+};
+
+
+const getUploadsPath = (filename = '') => {
+  // Go up two levels from controllers directory to reach backend root
+  // then go into uploads directory
+  return path.join(__dirname,'..' ,'..', 'uploads', filename);
+};
+
+// Download quotation PDF
+exports.downloadQuotation = async (req, res) => {
+  try {
+    const { id } = req.params;
+    console.log('Downloading quotation for booking:', id);
+    const booking = await Booking.findById(id);
+    console.log('Found booking:', booking);
+    if (!booking) {
+      return res.status(404).json({
+        success: false,
+        message: 'Booking not found'
+      });
+    }
+
+    if (!booking.quotationPdf) {
+      return res.status(404).json({
+        success: false,
+        message: 'No quotation found for this booking'
+      });
+    }
+
+     const filePath = getUploadsPath(booking.quotationPdf);
+
+      console.log('Looking for file at path:', filePath);
+    
+    // Check if file exists
+    if (!fs.existsSync(filePath)) {
+      return res.status(404).json({
+        success: false,
+        message: 'Quotation file not found'
+      });
+    }
+
+    // Set appropriate headers for PDF download
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="quotation-${booking.name}-${booking._id}.pdf"`);
+
+    // Stream the file
+    const fileStream = fs.createReadStream(filePath);
+    fileStream.pipe(res);
+
+  } catch (error) {
+    console.error('Error downloading quotation:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error downloading quotation',
+      error: error.message
+    });
+  }
+};
+
+// Delete quotation
+exports.deleteQuotation = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const booking = await Booking.findById(id);
+    
+    if (!booking) {
+      return res.status(404).json({
+        success: false,
+        message: 'Booking not found'
+      });
+    }
+
+    if (!booking.quotationPdf) {
+      return res.status(404).json({
+        success: false,
+        message: 'No quotation found for this booking'
+      });
+    }
+
+    const filePath = path.join(__dirname, '../uploads', booking.quotationPdf);
+    
+    // Delete file from filesystem
+    if (fs.existsSync(filePath)) {
+      fs.unlinkSync(filePath);
+    }
+
+    // Update booking to remove quotation
+    const updatedBooking = await Booking.findByIdAndUpdate(
+      id,
+      { 
+        quotationPdf: null,
+        quotationUploadedAt: null,
+        updatedAt: Date.now()
+      },
+      { new: true }
+    );
+
+    res.json({
+      success: true,
+      message: 'Quotation deleted successfully',
+      data: updatedBooking
+    });
+
+  } catch (error) {
+    console.error('Error deleting quotation:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error deleting quotation',
+      error: error.message
+    });
+  }
+};
+
 
 exports.getAllBookings = async (req, res) => {
   try {
