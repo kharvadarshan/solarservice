@@ -12,7 +12,6 @@ const uploadRoutes = require('./routes/uploads');
 const paymentRoutes= require('./routes/PaymentRoutes');
 const cookieParser = require('cookie-parser');
 const http=require('http');
-const Razorpay = require('razorpay');
 const socketIo = require('socket.io');
 const app = express();
 

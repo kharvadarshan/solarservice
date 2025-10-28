@@ -3,7 +3,7 @@ import { useNavigate, Link } from 'react-router-dom'
 import api from '../api'
 import { useDispatch, useSelector } from 'react-redux'
 import { logout,removeToken } from '../slice/AuthSlice'
-
+import Razorpay from 'razorpay';
 
 function StatusBadge({ status }) {
   
@@ -20,11 +20,11 @@ function StatusBadge({ status }) {
 export default function Profile() {
   const navigate = useNavigate()
   const dispatch=useDispatch();
-  const user = useSelector(state=>state.auth.user)
-  const [loggingOut, setLoggingOut] = useState(false)
-  const [bookings, setBookings] = useState([])
-  const [bookingsError, setBookingsError] = useState('')
-  const [activeTab, setActiveTab] = useState('requested')
+  const user = useSelector(state=>state.auth.user);
+  const [loggingOut, setLoggingOut] = useState(false);
+  const [bookings, setBookings] = useState([]);
+  const [bookingsError, setBookingsError] = useState('');
+  const [activeTab, setActiveTab] = useState('requested');
 
   useEffect(() => {
     const loadBookings = async () => {
@@ -39,7 +39,46 @@ export default function Profile() {
       }
     }
     loadBookings()
-  }, [])
+  }, []);
+
+
+  const checkoutHandler = async(amount)=>{
+     const { data:keyData} = await api.get("/api/v1/getKey");
+     console.log(keyData);
+     const { key } = keyData;
+     console.log(key); 
+
+     const { data:orderData } = await api.post("/api/v1/payment/process",{
+      amount
+     });
+
+     console.log(orderData);
+     const { order } = orderData;
+     console.log(order);
+
+
+     const options = {
+        key: key, // Replace with your Razorpay key_id
+        amount: amount, // Amount is in currency subunits. Default currency is INR. Hence, 50000 refers to 50000 paise
+        currency: 'INR',
+        name: 'Acme Corp',
+        description: 'Test Transaction',
+        order_id: order.id, // This is the order_id created in the backend
+        callback_url: '/api/v1/paymentVerification', // Your success URL
+        prefill: {
+          name: 'Darshan Kharva',
+          email: 'darshan.kharva11@gmail.com',
+          contact: '9999999999'
+        },
+        theme: {
+          color: '#F37254'
+        },
+      };
+
+      const rzp = new Razorpay(options);
+      rzp.open();
+
+  }
 
   const getInitials = (name = '') => {
     return name
@@ -110,6 +149,8 @@ export default function Profile() {
             <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Investment</th>
             <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Documents</th>
             <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Payment</th>
+
           </tr>
         </thead>
         <tbody className="bg-white divide-y divide-gray-200">
@@ -164,6 +205,9 @@ export default function Profile() {
               </td>
               <td className="px-4 py-4 whitespace-nowrap">
                 <StatusBadge status={booking.status} />
+              </td>
+              <td>
+                <button onClick={()=>checkoutHandler(200)}>Pay</button>
               </td>
             </tr>
           ))}
