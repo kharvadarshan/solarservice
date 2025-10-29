@@ -3,7 +3,7 @@ import { useNavigate, Link } from 'react-router-dom'
 import api from '../api'
 import { useDispatch, useSelector } from 'react-redux'
 import { logout,removeToken } from '../slice/AuthSlice'
-import Razorpay from 'razorpay';
+import {toast} from "sonner"
 
 function StatusBadge({ status }) {
   
@@ -25,6 +25,7 @@ export default function Profile() {
   const [bookings, setBookings] = useState([]);
   const [bookingsError, setBookingsError] = useState('');
   const [activeTab, setActiveTab] = useState('requested');
+  const [isLoading,setIsLoading] = useState(false);
 
   useEffect(() => {
     const loadBookings = async () => {
@@ -43,6 +44,10 @@ export default function Profile() {
 
 
   const checkoutHandler = async(amount)=>{
+
+    setIsLoading(true);
+
+    try {
      const { data:keyData} = await api.get("/api/v1/getKey");
      console.log(keyData);
      const { key } = keyData;
@@ -64,7 +69,25 @@ export default function Profile() {
         name: 'Acme Corp',
         description: 'Test Transaction',
         order_id: order.id, // This is the order_id created in the backend
-        callback_url: '/api/v1/paymentVerification', // Your success URL
+        handler: async function(response) {
+          try {
+           const verifyResponse =  await api.post("/api/v1/payment/paymentVerification", {
+              razorpay_order_id: response.razorpay_order_id,
+              razorpay_payment_id: response.razorpay_payment_id,
+              razorpay_signature: response.razorpay_signature,
+            });
+
+            if(verifyResponse.data.success)
+            {
+              navigate('/payment-success');
+            }
+          } catch (error) {
+            console.error("Payment verification failed:", error);
+          //  toast.error("Payment verification failed");
+          toast("error","Payment Verification Failed...!");
+           navigate("/payment-failed");
+          }
+        }, // Your success URL
         prefill: {
           name: 'Darshan Kharva',
           email: 'darshan.kharva11@gmail.com',
@@ -75,8 +98,15 @@ export default function Profile() {
         },
       };
 
-      const rzp = new Razorpay(options);
+      const rzp = new window.Razorpay(options);
       rzp.open();
+    }catch(error)
+    {
+            console.error("Payment Error:", error);
+    }
+    finally{
+      setIsLoading(false);
+    }
 
   }
 

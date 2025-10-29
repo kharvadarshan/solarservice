@@ -10,7 +10,8 @@ import ChatButton from './components/ChatButton'
 import ProductsPage from "./pages/ProductsPage";
 import SolarEstimate from "./pages/SolarEstimate";
 import { useSelector } from 'react-redux'
-
+import PaymentFailed from './components/PaymentFailed'
+import PaymentSuccess from './components/PaymentSuccess'
 import './App.css'
 import DashboardPage from './pages/DashboardPage'
 
@@ -51,6 +52,9 @@ function App() {
               path="/profile"
               element={user ? <Profile /> : <Navigate to="/" />}
             />
+
+             <Route path="/payment-success" element={<PaymentSuccess />} />
+            <Route path="/payment-failed" element={<PaymentFailed />} />
 
             <Route
               path="/admin/*"

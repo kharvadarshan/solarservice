@@ -4,7 +4,7 @@ const {getKey,paymentVerification,processPayment } = require('../../controllers/
 
 
 router.post("/payment/process",processPayment);
-router.get("/payment/getKey",getKey);
+router.get("/getKey",getKey);
 router.post("/payment/paymentVerification",paymentVerification);
 
 module.exports = router;
