@@ -4,9 +4,10 @@ import api from '../api'
 import { useDispatch, useSelector } from 'react-redux'
 import { logout,removeToken } from '../slice/AuthSlice'
 import {toast} from "sonner"
+import { Button } from '../components/ui/button'
+import { MediaViewerDialog } from '../components/MediaViewerDialog'
 
 function StatusBadge({ status }) {
-  
   const map = {
     pending: { text: 'Pending', cls: 'bg-yellow-50 text-yellow-700 border-yellow-200' },
     confirmed: { text: 'Confirmed', cls: 'bg-blue-50 text-blue-700 border-blue-200' },
@@ -27,6 +28,13 @@ export default function Profile() {
   const [activeTab, setActiveTab] = useState('requested');
   const [isLoading,setIsLoading] = useState(false);
 
+  const [mediaDialog, setMediaDialog] = useState({
+    open: false,
+    url: "",
+    type: "image",
+    title: "",
+  })
+
   useEffect(() => {
     const loadBookings = async () => {
       try {
@@ -41,6 +49,88 @@ export default function Profile() {
     }
     loadBookings()
   }, []);
+
+
+  console.log("Bookings:",bookings);
+
+
+ 
+
+// Download quotation function
+const downloadQuotation = async (bookingId, bookingName) => {
+  try {
+    const res = await api.get(`/api/bookings/${bookingId}/quotation`, {
+      responseType: 'blob' // Important for file downloads
+    });
+    
+    // Create blob and download
+    const blob = new Blob([res.data], { type: 'application/pdf' });
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `quotation-${bookingName}-${bookingId}.pdf`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
+    
+  } catch (error) {
+    console.error("Failed to download quotation:", error);
+    alert('Failed to download quotation: ' + (error.response?.data?.message || error.message));
+  }
+};
+
+// Delete quotation function
+const deleteQuotation = async (bookingId) => {
+  if (!confirm('Are you sure you want to delete this quotation?')) {
+    return;
+  }
+  
+  try {
+    const res = await api.delete(`/api/bookings/${bookingId}/quotation`);
+    if (res.data.success) {
+     
+      alert('Quotation deleted successfully!');
+    }
+  } catch (error) {
+    console.error("Failed to delete quotation:", error);
+    alert('Failed to delete quotation: ' + (error.response?.data?.message || error.message));
+  }
+};
+
+const extractFilename = (filePath) => {
+  if (!filePath) return null;
+  
+  // Handle various path formats
+  if (filePath.includes('/')) {
+    return filePath.split('/').pop();
+  }
+  if (filePath.includes('\\')) {
+    return filePath.split('\\').pop();
+  }
+  // If it's already just a filename, return as is
+  return filePath;
+}
+const getThumbnailUrl = (filePath) => {
+  const filename = extractFilename(filePath);
+  if (!filename) return "/placeholder.svg";
+  
+  return `http://localhost:5000/api/uploads/${filename}`;
+}
+
+const openMediaViewer = (filePath, type, title) => {
+  const filename = extractFilename(filePath);
+  if (!filename) return;
+  
+  const apiUrl = `http://localhost:5000/api/uploads/${filename}`;
+  
+  setMediaDialog({
+    open: true,
+    url: apiUrl,
+    type,
+    title,
+  });
+}
 
 
   const checkoutHandler = async(amount)=>{
@@ -119,51 +209,8 @@ export default function Profile() {
       .join('') || 'U'
   }
 
-  const getBookingsByStatus = (status) => {
-    switch(status) {
-      case 'requested':
-        return bookings.filter(b => b.status === 'pending');
-      case 'in-progress':
-        return bookings.filter(b => b.status === 'confirmed');
-      case 'completed':
-        return bookings.filter(b => b.status === 'completed');
-      case 'incomplete':
-        return bookings.filter(b => b.status === 'rejected');
-      default:
-        return [];
-    }
-  }
+ 
 
-  const tabs = [
-    { 
-      id: 'requested', 
-      label: 'Requested', 
-      icon: '⏳', 
-      count: getBookingsByStatus('requested').length,
-      color: 'yellow'
-    },
-    { 
-      id: 'in-progress', 
-      label: 'In Progress', 
-      icon: '🚀', 
-      count: getBookingsByStatus('in-progress').length,
-      color: 'blue'
-    },
-    { 
-      id: 'completed', 
-      label: 'Completed', 
-      icon: '✅', 
-      count: getBookingsByStatus('completed').length,
-      color: 'green'
-    },
-    { 
-      id: 'incomplete', 
-      label: 'Incomplete', 
-      icon: '❌', 
-      count: getBookingsByStatus('incomplete').length,
-      color: 'red'
-    }
-  ]
 
   const renderBookingTable = (bookingsList) => (
     <div className="overflow-x-auto">
@@ -173,12 +220,14 @@ export default function Profile() {
             <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
             <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Contact Info</th>
             <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Address</th>
-            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Power & Panel</th>
-            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Company</th>
-            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Bill Details</th>
-            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Investment</th>
+            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Electricity Details</th>
+            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Panel Type</th>
+            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Company Details</th>
+          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Pricing</th>
+            {/* <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Company</th> */}
             <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Documents</th>
             <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
             <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Payment</th>
 
           </tr>
@@ -198,30 +247,194 @@ export default function Profile() {
                 <div className="truncate" title={booking.address}>{booking.address}</div>
                 <div className="text-xs text-gray-500">PIN: {booking.pincode}</div>
               </td>
-              <td className="px-4 py-4 text-sm">
+               {/* Electricity Details */}
+              <td className="px-4 py-4">
+                <div className="text-sm text-gray-900">
+                  ₹{booking.electricityBill?.toLocaleString()}/month
+                </div>
+                <div className="text-sm text-gray-500">{booking.serviceProvider}</div>
+                <div className="text-sm text-gray-500 capitalize">
+                  {booking.billingCycle?.replace("-", " ")}
+                </div>
+                <div className="text-sm font-medium text-gray-700 mt-1">
+                  Power: {booking.calculatedPower} kW
+                </div>
+              </td>
+              {/* Panel Type */}
+                        <td className="px-4 py-4">
+                          <div className="text-sm font-medium text-gray-900">{booking.selectedPanelType?.name}</div>
+                          <div className="text-sm text-gray-500">{booking.selectedPanelType?.wattPeak} Wp</div>
+                          <div className="text-sm text-gray-500">{booking.selectedPanelType?.plates} plates</div>
+                          <div className="text-sm text-gray-500">{booking.selectedPanelType?.requiredPower} kW</div>
+                          <div className="text-sm font-medium text-gray-700 mt-1">
+                            ₹{booking.selectedPanelType?.price?.toLocaleString()}
+                          </div>
+                        </td>
+              {/* <td className="px-4 py-4 text-sm">
                 <div className="font-medium text-gray-900">{booking.calculatedPower} kW</div>
                 <div className="text-xs text-gray-500">{booking.selectedPanelType?.name}</div>
                 <div className="text-xs text-gray-500">{booking.selectedPanelType?.wattPeak}W × {booking.selectedPanelType?.plates}</div>
-              </td>
-              <td className="px-4 py-4 text-sm">
+              </td> */}
+              {/* <td className="px-4 py-4 text-sm">
                 <div className="font-medium text-gray-900">{booking.selectedCompany?.name}</div>
                 <div className="text-xs text-gray-500">Rating: {booking.selectedCompany?.rating}/5</div>
-              </td>
-              <td className="px-4 py-4 text-sm">
-                <div className="font-medium text-gray-900">₹{booking.electricityBill?.toLocaleString()}</div>
-                <div className="text-xs text-gray-500">{booking.serviceProvider}</div>
-                <div className="text-xs text-gray-500">{booking.billingCycle === 'one-month' ? '1 Month' : '2 Months'}</div>
-              </td>
-              <td className="px-4 py-4 text-sm">
+              </td> */}
+
+              {/* Company Details */}
+                        <td className="px-4 py-4">
+                          <div className="text-sm font-medium text-gray-900">{booking.selectedCompany?.name}</div>
+                          <div className="text-sm text-gray-500">Rating: {booking.selectedCompany?.rating}/5 ⭐</div>
+                          <div className="text-sm text-gray-500">ROI: {booking.selectedCompany?.roi}</div>
+                          <div className="text-sm text-gray-500">Break Even: {booking.selectedCompany?.breakEven}</div>
+                        </td>
+
+                         {/* Pricing */}
+                        <td className="px-4 py-4">
+                          <div className="text-sm text-gray-900">
+                            <div className="font-medium">
+                              Tentative: ₹{booking.selectedCompany?.tentativeAmount?.toLocaleString()}
+                            </div>
+                            <div className="text-green-600">
+                              Subsidy: -₹{booking.selectedCompany?.subsidyAmount?.toLocaleString()}
+                            </div>
+                            <div className="font-bold text-gray-900 mt-1">
+                              Effective: ₹{booking.selectedCompany?.effectiveAmount?.toLocaleString()}
+                            </div>
+                          </div>
+                        </td>
+
+             
+
+              
+              {/* <td className="px-4 py-4 text-sm">
                 <div className="text-xs">
                   <div className="text-gray-600">Tentative: <span className="font-medium">₹{booking.selectedCompany?.tentativeAmount?.toLocaleString()}</span></div>
                   <div className="text-green-600">Subsidy: <span className="font-medium">₹{booking.selectedCompany?.subsidyAmount?.toLocaleString()}</span></div>
                   <div className="text-orange-600">Effective: <span className="font-medium">₹{booking.selectedCompany?.effectiveAmount?.toLocaleString()}</span></div>
                   <div className="text-gray-600">ROI: <span className="font-medium">{booking.selectedCompany?.roi}</span></div>
                 </div>
-              </td>
+              </td> */}
               <td className="px-4 py-4 text-sm">
-                <div className="flex flex-col gap-1">
+
+              <div className="space-y-2">
+                  {booking.electricityBillImage && (
+                    <div className="flex items-center gap-2">
+                      <img
+                        src={getThumbnailUrl(booking.electricityBillImage)}
+                        alt="Bill preview"
+                        className="w-12 h-12 object-cover rounded border cursor-pointer hover:opacity-80"
+                        onClick={() =>
+                          openMediaViewer(
+                            booking.electricityBillImage,
+                            "image",
+                            `${booking.name} - Electricity Bill`,
+                          )
+                        }
+                      />
+                      <div className="flex flex-col gap-1">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="text-xs h-7 bg-transparent"
+                          onClick={() =>
+                            openMediaViewer(
+                              booking.electricityBillImage,
+                              "image",
+                              `${booking.name} - Electricity Bill`,
+                            )
+                          }
+                        >
+                          View Bill
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                  {booking.siteVideo && (
+                    <div className="flex items-center gap-2">
+                      <video
+                        src={getThumbnailUrl(booking.siteVideo)}
+                        className="w-12 h-12 object-cover rounded border cursor-pointer hover:opacity-80"
+                        onClick={() =>
+                          openMediaViewer(booking.siteVideo, "video", `${booking.name} - Site Video`)
+                        }
+                      />
+                      <div className="flex flex-col gap-1">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="text-xs h-7 bg-transparent"
+                          onClick={() =>
+                            openMediaViewer(booking.siteVideo, "video", `${booking.name} - Site Video`)
+                          }
+                        >
+                          View Video
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                  {!booking.electricityBillImage && !booking.siteVideo && (
+                    <span className="text-xs text-gray-400">No documents</span>
+                  )}
+                </div>
+              </td>
+              
+                    
+                       
+              
+                                      {/* Status */}
+                                       <td className="px-4 py-4 whitespace-nowrap">
+                <span
+                  className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                    booking.status === "installation"
+                      ? "bg-green-100 text-green-800"
+                      : booking.status === "quoted"
+                      ? "bg-blue-100 text-blue-800"
+                      : booking.status === "survey"
+                      ? "bg-purple-100 text-purple-800"
+                      : "bg-yellow-100 text-yellow-800"
+                  }`}
+                >
+                  {booking.status.charAt(0).toUpperCase() + booking.status.slice(1)}
+                </span>
+              </td> 
+                    <td className="px-4 py-4">
+                <div className="space-y-2">
+                  {booking.quotationPdf ? (
+                    <div className="flex flex-col gap-2">
+                      <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 bg-red-100 rounded flex items-center justify-center">
+                          <span className="text-red-600 text-xs font-bold">PDF</span>
+                        </div>
+                        <div className="text-xs text-gray-600">
+                          Uploaded: {new Date(booking.quotationUploadedAt).toLocaleDateString()}
+                        </div>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="text-xs h-7"
+                          onClick={() => downloadQuotation(booking._id, booking.name)}
+                        >
+                          Download
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          className="text-xs h-7"
+                          onClick={() => deleteQuotation(booking._id)}
+                        >
+                          Delete
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col gap-2">
+                        null    
+                    </div>
+                  )}
+                </div>
+                {/* <div className="flex flex-col gap-1">
                   {booking.electricityBillImage && (
                     <span className="text-xs text-green-600">✓ Bill</span>
                   )}
@@ -231,11 +444,11 @@ export default function Profile() {
                   {!booking.electricityBillImage && !booking.siteVideo && (
                     <span className="text-xs text-gray-400">None</span>
                   )}
-                </div>
+                </div> */}
               </td>
-              <td className="px-4 py-4 whitespace-nowrap">
+              {/* <td className="px-4 py-4 whitespace-nowrap">
                 <StatusBadge status={booking.status} />
-              </td>
+              </td> */}
               <td>
                 <button onClick={()=>checkoutHandler(200)}>Pay</button>
               </td>
@@ -358,48 +571,28 @@ export default function Profile() {
             <>
               {/* Tabs */}
               <div className="border-b border-gray-200 mb-6">
-                <nav className="-mb-px flex space-x-8">
-                  {tabs.map((tab) => (
-                    <button
-                      key={tab.id}
-                      onClick={() => setActiveTab(tab.id)}
-                      className={`py-2 px-1 border-b-2 font-medium text-sm flex items-center gap-2 ${
-                        activeTab === tab.id
-                          ? `border-${tab.color}-500 text-${tab.color}-600`
-                          : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                      }`}
-                    >
-                      <span>{tab.icon}</span>
-                      <span>{tab.label}</span>
-                      <span className={`ml-1 px-2 py-0.5 rounded-full text-xs ${
-                        activeTab === tab.id
-                          ? `bg-${tab.color}-100 text-${tab.color}-600`
-                          : 'bg-gray-100 text-gray-600'
-                      }`}>
-                        {tab.count}
-                      </span>
-                    </button>
-                  ))}
-                </nav>
+                
               </div>
 
               {/* Tab Content */}
               <div className="min-h-[400px]">
                 {(() => {
-                  const currentBookings = getBookingsByStatus(activeTab);
-                  const currentTab = tabs.find(tab => tab.id === activeTab);
-                  
-                  if (currentBookings.length === 0) {
-                    return renderEmptyState(currentTab);
-                  }
+                 
 
-                  return renderBookingTable(currentBookings);
+                  return renderBookingTable(bookings);
                 })()}
               </div>
             </>
           )}
         </div>
       </div>
+       <MediaViewerDialog
+        open={mediaDialog.open}
+        onOpenChange={(open) => setMediaDialog({ ...mediaDialog, open })}
+        mediaUrl={mediaDialog.url}
+        mediaType={mediaDialog.type}
+        title={mediaDialog.title}
+      />
     </div>
   )
 }

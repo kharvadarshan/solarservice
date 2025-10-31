@@ -51,6 +51,10 @@ export default function AdminPanel() {
     }
   }
 
+
+  
+
+
   // const updateBookingStatus = async (bookingId, status) => {
   //   try {
   //     const res = await api.put(`/api/admin/bookings/${bookingId}`, {
