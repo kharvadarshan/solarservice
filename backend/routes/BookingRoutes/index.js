@@ -78,6 +78,9 @@ router.post('/', authenticateToken, upload.fields([
 router.put('/:id/status', authenticateToken, bookingController.updateBookingStatus);
 router.get('/', authenticateToken, bookingController.getAllBookings);
 router.get('/my', authenticateToken, bookingController.getMyBookings);
+router.get('/pvwatts', authenticateToken, bookingController.getPVWattsData);
+// Keep old route name for backward compatibility - redirects to new endpoint
+router.get('/solar-stats', authenticateToken, bookingController.getPVWattsData);
 router.get('/:id', authenticateToken, bookingController.getBookingById);
 
 // Quotation routes

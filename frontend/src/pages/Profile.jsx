@@ -27,6 +27,9 @@ export default function Profile() {
   const [bookingsError, setBookingsError] = useState('');
   const [activeTab, setActiveTab] = useState('requested');
   const [isLoading,setIsLoading] = useState(false);
+  const [solarStats, setSolarStats] = useState(null);
+  const [solarStatsLoading, setSolarStatsLoading] = useState(false);
+  const [solarStatsError, setSolarStatsError] = useState('');
 
   const [mediaDialog, setMediaDialog] = useState({
     open: false,
@@ -48,6 +51,52 @@ export default function Profile() {
       }
     }
     loadBookings()
+  }, []);
+
+  useEffect(() => {
+    const loadSolarStats = async () => {
+      setSolarStatsLoading(true);
+      setSolarStatsError('');
+      try {
+        const res = await api.get(`/api/bookings/solar-stats`);
+        if (!res.data.success) throw new Error(res.data?.error || 'Failed to load solar stats');
+        
+        // Map PVWatts API response to expected format
+        const apiData = res.data.data;
+        if (apiData && apiData.outputs) {
+          // Convert all values to numbers to ensure toFixed() works
+          const systemCapacity = Number(apiData.inputs?.system_capacity || 0);
+          const annualEnergy = Number(apiData.annualEnergy || apiData.outputs.ac_annual || 0);
+          const monthlyProduction = (apiData.monthlyProduction || apiData.outputs.ac_monthly || []).map(val => Number(val));
+          
+          // Calculate average daily from annual energy
+          const averageDaily = annualEnergy / 365;
+          
+          // Find peak month
+          const peakMonthValue = monthlyProduction.length > 0 
+            ? Math.max(...monthlyProduction) 
+            : 0;
+          
+          setSolarStats({
+            totalCapacity: systemCapacity,
+            annualEnergy: annualEnergy,
+            averageDaily: averageDaily,
+            peakGeneration: peakMonthValue / 30, // Approximate daily peak from monthly peak
+            monthlyProduction: monthlyProduction,
+            outputs: apiData.outputs,
+            inputs: apiData.inputs
+          });
+        } else {
+          setSolarStats(null);
+        }
+      } catch (e) {
+        setSolarStatsError(e.message);
+        console.error('Error loading solar stats:', e);
+      } finally {
+        setSolarStatsLoading(false);
+      }
+    };
+    loadSolarStats();
   }, []);
 
 
@@ -550,6 +599,146 @@ const openMediaViewer = (filePath, type, title) => {
           <div className="mt-6 text-sm text-gray-500">
             Your session is secured with an httpOnly cookie. For API calls, we also store a token locally for client-side interactions.
           </div>
+        </div>
+
+        {/* Solar Power Generation Stats */}
+        <div className="mt-8 bg-white shadow rounded-2xl p-8">
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-xl font-semibold text-gray-900">Solar Power Generation</h2>
+            <div className="text-sm text-gray-500">
+              Data from NREL PVWatts API
+            </div>
+          </div>
+
+          {solarStatsLoading ? (
+            <div className="text-center py-12">
+              <div className="text-gray-500">Loading solar generation data...</div>
+            </div>
+          ) : solarStatsError ? (
+            <div className="text-red-600 bg-red-50 border border-red-200 rounded-lg p-4">
+              {solarStatsError}
+            </div>
+          ) : !solarStats || !solarStats.totalCapacity ? (
+            <div className="text-center py-12">
+              <div className="text-6xl mb-4">☀️</div>
+              <div className="text-gray-600 text-lg mb-2">No solar data available</div>
+              <div className="text-gray-500">Check your API connection or parameters</div>
+            </div>
+          ) : (
+            <>
+              {/* Summary Cards */}
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                <div className="bg-gradient-to-br from-yellow-50 to-orange-50 rounded-xl p-4 border border-orange-200">
+                  <div className="text-sm text-gray-600 mb-1">System Capacity</div>
+                  <div className="text-2xl font-bold text-orange-600">
+                    {Number(solarStats.totalCapacity || 0).toFixed(2)} kW
+                  </div>
+                </div>
+                <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl p-4 border border-green-200">
+                  <div className="text-sm text-gray-600 mb-1">Annual Energy</div>
+                  <div className="text-2xl font-bold text-green-600">
+                    {Number(solarStats.annualEnergy || 0).toFixed(2)} kWh/year
+                  </div>
+                  <div className="text-xs text-gray-500 mt-1">From PVWatts API</div>
+                </div>
+                <div className="bg-gradient-to-br from-blue-50 to-cyan-50 rounded-xl p-4 border border-blue-200">
+                  <div className="text-sm text-gray-600 mb-1">Daily Average</div>
+                  <div className="text-2xl font-bold text-blue-600">
+                    {Number(solarStats.averageDaily || 0).toFixed(2)} kWh/day
+                  </div>
+                </div>
+                <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-xl p-4 border border-purple-200">
+                  <div className="text-sm text-gray-600 mb-1">Capacity Factor</div>
+                  <div className="text-2xl font-bold text-purple-600">
+                    {solarStats.outputs?.capacity_factor ? 
+                      (Number(solarStats.outputs.capacity_factor) * 100).toFixed(2) : '0.00'}%
+                  </div>
+                </div>
+              </div>
+
+              {/* Monthly Production Table */}
+              {solarStats.monthlyProduction && solarStats.monthlyProduction.length > 0 && (
+                <div className="overflow-x-auto">
+                  <h3 className="text-lg font-semibold text-gray-800 mb-4">Monthly Production (kWh)</h3>
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Month</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">AC Energy (kWh)</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Solar Radiation</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {solarStats.monthlyProduction.map((energy, idx) => {
+                        const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 
+                                           'July', 'August', 'September', 'October', 'November', 'December'];
+                        const solarRad = solarStats.outputs?.solrad_monthly?.[idx] || 0;
+                        const efficiency = solarRad > 0 ? (energy / (solarStats.totalCapacity * solarRad * 30)) * 100 : 0;
+                        
+                        return (
+                          <tr key={idx} className="hover:bg-gray-50">
+                            <td className="px-4 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                              {monthNames[idx]}
+                            </td>
+                            <td className="px-4 py-4 whitespace-nowrap">
+                              <div className="text-sm font-semibold text-gray-900">
+                                {Number(energy).toFixed(2)} kWh
+                              </div>
+                            </td>
+                            <td className="px-4 py-4 whitespace-nowrap">
+                              <div className="text-sm text-gray-700">
+                                {Number(solarRad).toFixed(2)} kWh/m²/day
+                              </div>
+                            </td>
+                            <td className="px-4 py-4 whitespace-nowrap">
+                              <span
+                                className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                                  energy >= solarStats.annualEnergy / 12 * 1.1
+                                    ? "bg-green-100 text-green-800"
+                                    : energy >= solarStats.annualEnergy / 12 * 0.9
+                                    ? "bg-yellow-100 text-yellow-800"
+                                    : "bg-red-100 text-red-800"
+                                }`}
+                              >
+                                {energy >= solarStats.annualEnergy / 12 * 1.1 ? "Peak" : 
+                                 energy >= solarStats.annualEnergy / 12 * 0.9 ? "Normal" : "Low"}
+                              </span>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+              
+              {/* Additional PVWatts Info */}
+              {solarStats.outputs && (
+                <div className="mt-6 p-4 bg-gray-50 rounded-lg">
+                  <h3 className="text-md font-semibold text-gray-800 mb-2">PVWatts API Information</h3>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                    <div>
+                      <span className="text-gray-600">Location: </span>
+                      <span className="font-medium">{solarStats.inputs?.lat || 'N/A'}, {solarStats.inputs?.lon || 'N/A'}</span>
+                    </div>
+                    <div>
+                      <span className="text-gray-600">Azimuth: </span>
+                      <span className="font-medium">{solarStats.inputs?.azimuth || 'N/A'}°</span>
+                    </div>
+                    <div>
+                      <span className="text-gray-600">Tilt: </span>
+                      <span className="font-medium">{solarStats.inputs?.tilt || 'N/A'}°</span>
+                    </div>
+                    <div>
+                      <span className="text-gray-600">DC Annual: </span>
+                      <span className="font-medium">{Number(solarStats.outputs.dc_annual || 0).toFixed(2)} kWh</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </>
+          )}
         </div>
 
         {/* Bookings with Tabs */}

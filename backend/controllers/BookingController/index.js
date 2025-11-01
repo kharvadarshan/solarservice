@@ -4,6 +4,7 @@
 const Booking = require('../../Models/Booking');
 const path = require('path');
 const fs = require('fs');
+const https = require('https');
 
 exports.createBooking = async (req, res) => {
   try {
@@ -366,6 +367,80 @@ exports.getMyBookings = async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Error retrieving user bookings',
+      error: error.message
+    });
+  }
+};
+
+// Get solar generation data from NREL PVWatts API - returns raw API data
+exports.getPVWattsData = async (req, res) => {
+  try {
+    // Use DEMO_KEY as default or get from environment
+    const API_KEY = process.env.NREL_API_KEY || 'DEMO_KEY';
+    
+    // Get parameters from query string or use defaults
+    const lat = req.query.lat || '40.7128';
+    const lon = req.query.lon || '-74.0060';
+    const system_capacity = req.query.system_capacity || '4';
+    const azimuth = req.query.azimuth || '180';
+    const tilt = req.query.tilt || '40';
+    const array_type = req.query.array_type || '1';
+    const module_type = req.query.module_type || '1';
+    const losses = req.query.losses || '14';
+    
+    // Build PVWatts API URL
+    const url = `https://developer.nrel.gov/api/pvwatts/v6.json?api_key=${API_KEY}&lat=${lat}&lon=${lon}&system_capacity=${system_capacity}&azimuth=${azimuth}&tilt=${tilt}&array_type=${array_type}&module_type=${module_type}&losses=${losses}`;
+    
+    // Call NREL PVWatts API using Node.js https module
+    const data = await new Promise((resolve, reject) => {
+      https.get(url, (response) => {
+        let rawData = '';
+        
+        response.on('data', (chunk) => {
+          rawData += chunk;
+        });
+        
+        response.on('end', () => {
+          try {
+            if (response.statusCode !== 200) {
+              reject(new Error(`PVWatts API error: ${response.statusCode} ${response.statusMessage}`));
+              return;
+            }
+            
+            const parsedData = JSON.parse(rawData);
+            
+            if (parsedData.errors && parsedData.errors.length > 0) {
+              reject(new Error(`PVWatts API errors: ${parsedData.errors.join(', ')}`));
+              return;
+            }
+            
+            resolve(parsedData);
+          } catch (parseError) {
+            reject(new Error(`Failed to parse PVWatts API response: ${parseError.message}`));
+          }
+        });
+      }).on('error', (error) => {
+        reject(new Error(`Network error calling PVWatts API: ${error.message}`));
+      });
+    });
+    
+    // Return raw API data without any calculations
+    res.status(200).json({
+      success: true,
+      message: 'PVWatts data retrieved successfully',
+      data: {
+        inputs: data.inputs,
+        outputs: data.outputs,
+        // Additional helpful fields
+        monthlyProduction: data.outputs.ac_monthly,
+        annualEnergy: data.outputs.ac_annual
+      }
+    });
+  } catch (error) {
+    console.error('Error retrieving PVWatts data:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error retrieving PVWatts data',
       error: error.message
     });
   }
